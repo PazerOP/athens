@@ -393,6 +393,30 @@ func TestDownloadProtocol(t *testing.T) {
 	}
 }
 
+func TestDownloadProtocolZip(t *testing.T) {
+	s, err := mem.NewStorage()
+	require.Nil(t, err)
+
+	mp := &mockFetcher{}
+	st := stash.New(mp, s, nop.New())
+	dp := New(&Opts{s, st, nil, nil, Strict})
+	ctx := context.Background()
+
+	mod, ver := "github.com/athens-artifacts/samplelib", "v1.0.0"
+
+	// First call triggers fetch and stash
+	zip, err := dp.Zip(ctx, mod, ver)
+	require.Nil(t, err)
+	require.NotNil(t, zip)
+	defer zip.Close()
+
+	// Second call hits cache
+	zip2, err := dp.Zip(ctx, mod, ver)
+	require.Nil(t, err)
+	require.NotNil(t, zip2)
+	defer zip2.Close()
+}
+
 type mockFetcher struct{}
 
 func (m *mockFetcher) Fetch(ctx context.Context, mod, ver string) (*storage.Version, error) {

@@ -152,6 +152,94 @@ func TestApp_WithPathPrefix(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestApp_WithLocalSumDB(t *testing.T) {
+	logger := log.New("none", logrus.DebugLevel, "plain")
+	conf := &config.Config{
+		GoBinary:         "go",
+		GoBinaryEnvVars:  config.EnvList{"GOPROXY=direct"},
+		GoEnv:            "development",
+		GoGetWorkers:     10,
+		ProtocolWorkers:  30,
+		LogLevel:         "debug",
+		LogFormat:        "plain",
+		CloudRuntime:     "none",
+		StorageType:      "memory",
+		Port:             ":3000",
+		SingleFlightType: "memory",
+		TimeoutConf:      config.TimeoutConf{Timeout: 300},
+		SumDBs:           []string{},
+		NoSumPatterns:    []string{},
+		DownloadMode:     "sync",
+		NetworkMode:      "strict",
+		RobotsFile:       "robots.txt",
+		IndexType:        "memory",
+		LocalSumDB:       true,
+		LocalSumDBDir:    t.TempDir(),
+		LocalSumDBName:   "test.local",
+		SingleFlight: &config.SingleFlight{
+			Etcd:          &config.Etcd{Endpoints: "localhost:2379"},
+			Redis:         &config.Redis{Endpoint: "127.0.0.1:6379", Password: "", LockConfig: config.DefaultRedisLockConfig()},
+			RedisSentinel: &config.RedisSentinel{Endpoints: []string{"127.0.0.1:26379"}, MasterName: "redis-1", LockConfig: config.DefaultRedisLockConfig()},
+			GCP:           config.DefaultGCPConfig(),
+		},
+		Storage: &config.Storage{},
+		Index:   &config.Index{},
+	}
+
+	handler, err := App(logger, conf)
+	require.NoError(t, err)
+	require.NotNil(t, handler)
+
+	// Test sumdb supported endpoint
+	req := httptest.NewRequest(http.MethodGet, "/sumdb/test.local/supported", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestApp_WithValidatorHook(t *testing.T) {
+	// Set up a mock validator server
+	validatorServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer validatorServer.Close()
+
+	logger := log.New("none", logrus.DebugLevel, "plain")
+	conf := &config.Config{
+		GoBinary:         "go",
+		GoBinaryEnvVars:  config.EnvList{"GOPROXY=direct"},
+		GoEnv:            "development",
+		GoGetWorkers:     10,
+		ProtocolWorkers:  30,
+		LogLevel:         "debug",
+		LogFormat:        "plain",
+		CloudRuntime:     "none",
+		StorageType:      "memory",
+		Port:             ":3000",
+		SingleFlightType: "memory",
+		TimeoutConf:      config.TimeoutConf{Timeout: 300},
+		SumDBs:           []string{"https://sum.golang.org"},
+		NoSumPatterns:    []string{},
+		DownloadMode:     "sync",
+		NetworkMode:      "strict",
+		RobotsFile:       "robots.txt",
+		IndexType:        "none",
+		ValidatorHook:    validatorServer.URL,
+		SingleFlight: &config.SingleFlight{
+			Etcd:          &config.Etcd{Endpoints: "localhost:2379"},
+			Redis:         &config.Redis{Endpoint: "127.0.0.1:6379", Password: "", LockConfig: config.DefaultRedisLockConfig()},
+			RedisSentinel: &config.RedisSentinel{Endpoints: []string{"127.0.0.1:26379"}, MasterName: "redis-1", LockConfig: config.DefaultRedisLockConfig()},
+			GCP:           config.DefaultGCPConfig(),
+		},
+		Storage: &config.Storage{},
+		Index:   &config.Index{},
+	}
+
+	handler, err := App(logger, conf)
+	require.NoError(t, err)
+	require.NotNil(t, handler)
+}
+
 func TestApp_GithubTokenAndNetrc_Error(t *testing.T) {
 	logger := log.New("none", logrus.DebugLevel, "plain")
 	conf := &config.Config{
@@ -162,4 +250,41 @@ func TestApp_GithubTokenAndNetrc_Error(t *testing.T) {
 	_, err := App(logger, conf)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "cannot provide both")
+}
+
+func TestApp_WithGithubToken(t *testing.T) {
+	logger := log.New("none", logrus.DebugLevel, "plain")
+	conf := &config.Config{
+		GoBinary:         "go",
+		GoBinaryEnvVars:  config.EnvList{"GOPROXY=direct"},
+		GoEnv:            "development",
+		GoGetWorkers:     10,
+		ProtocolWorkers:  30,
+		LogLevel:         "debug",
+		LogFormat:        "plain",
+		CloudRuntime:     "none",
+		StorageType:      "memory",
+		Port:             ":3000",
+		SingleFlightType: "memory",
+		TimeoutConf:      config.TimeoutConf{Timeout: 300},
+		SumDBs:           []string{"https://sum.golang.org"},
+		NoSumPatterns:    []string{},
+		DownloadMode:     "sync",
+		NetworkMode:      "strict",
+		RobotsFile:       "robots.txt",
+		IndexType:        "none",
+		GithubToken:      "test-token-123",
+		SingleFlight: &config.SingleFlight{
+			Etcd:          &config.Etcd{Endpoints: "localhost:2379"},
+			Redis:         &config.Redis{Endpoint: "127.0.0.1:6379", Password: "", LockConfig: config.DefaultRedisLockConfig()},
+			RedisSentinel: &config.RedisSentinel{Endpoints: []string{"127.0.0.1:26379"}, MasterName: "redis-1", LockConfig: config.DefaultRedisLockConfig()},
+			GCP:           config.DefaultGCPConfig(),
+		},
+		Storage: &config.Storage{},
+		Index:   &config.Index{},
+	}
+
+	handler, err := App(logger, conf)
+	require.NoError(t, err)
+	require.NotNil(t, handler)
 }
