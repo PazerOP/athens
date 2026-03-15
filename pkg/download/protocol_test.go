@@ -33,19 +33,16 @@ var testConfigPath = filepath.Join("..", "..", "config.dev.toml")
 func getDP(t *testing.T) Protocol {
 	t.Helper()
 	conf, err := config.GetConf(testConfigPath)
-	if err != nil {
-		t.Fatalf("Unable to parse config file: %s", err.Error())
-	}
+	require.Nil(t, err)
+
 	goBin := conf.GoBinary
 	fs := afero.NewOsFs()
 	mf, err := module.NewGoGetFetcher(goBin, conf.GoGetDir, conf.GoBinaryEnvVars, fs)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	s, err := mem.NewStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	st := stash.New(mf, s, nop.New())
 	return New(&Opts{
 		Storage:	s,
@@ -170,13 +167,11 @@ func TestListMode(t *testing.T) {
 		}
 		t.Run(tc.name, func(t *testing.T) {
 			versions, err := dp.List(ctx, tc.path)
-			if err != nil && !tc.wantErr {
-				t.Fatal(err)
-			}
+			require.False(t, err != nil && !tc.wantErr)
+
 			require.EqualValues(t, tc.wantTags, versions)
-			if tc.networkmode == Offline && ml.called {
-				t.Fatal("upstream lister must not be called in offline mode")
-			}
+			require.False(t, tc.networkmode == Offline && ml.called)
+
 		})
 	}
 }
@@ -203,13 +198,10 @@ func TestConcurrentLists(t *testing.T) {
 	}()
 	wg.Wait()
 
-	if pkgErr != nil {
-		t.Fatalf("expected version listing of %v to succeed but got %v", pkg, pkgErr)
-	}
+	require.Nil(t, pkgErr)
 
-	if subPkgErr == nil {
-		t.Fatalf("expected version listing of %v to fail because it's a subdirectory", subPkg)
-	}
+	require.NotNil(t, subPkgErr)
+
 }
 
 type latestTest struct {
@@ -359,9 +351,7 @@ func getGoldenFile(t *testing.T, name string) []byte {
 	t.Helper()
 	file := filepath.Join("test_data", strings.Replace(name, " ", "_", -1)+".golden")
 	bts, err := os.ReadFile(file)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	return bts
 }
@@ -378,9 +368,8 @@ var mods = []testMod{
 
 func TestDownloadProtocol(t *testing.T) {
 	s, err := mem.NewStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	mp := &mockFetcher{}
 	st := stash.New(mp, s, nop.New())
 	dp := New(&Opts{s, st, nil, nil, Strict})
@@ -396,18 +385,14 @@ func TestDownloadProtocol(t *testing.T) {
 	}
 
 	err = eg.Wait()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	for _, m := range mods {
 		bts, err := dp.GoMod(ctx, m.mod, m.ver)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(bts, []byte(m.mod+"@"+m.ver)) {
-			t.Fatalf("unexpected gomod content: %s", bts)
-		}
+		require.Nil(t, err)
+
+		require.True(t, bytes.Equal(bts, []byte(m.mod+"@"+m.ver)))
+
 	}
 }
 
@@ -424,23 +409,20 @@ func (m *mockFetcher) Fetch(ctx context.Context, mod, ver string) (*storage.Vers
 
 func TestDownloadProtocolWhenFetchFails(t *testing.T) {
 	s, err := mem.NewStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	fakeMod := testMod{"github.com/athens-artifacts/samplelib", "v1.0.0"}
 	bts := []byte(fakeMod.mod + "@" + fakeMod.ver)
 	err = s.Save(context.Background(), fakeMod.mod, fakeMod.ver, bts, io.NopCloser(bytes.NewReader(bts)), nil, bts)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	mp := &notFoundFetcher{}
 	st := stash.New(mp, s, nop.New())
 	dp := New(&Opts{s, st, nil, nil, Strict})
 	ctx := context.Background()
 	_, err = dp.GoMod(ctx, fakeMod.mod, fakeMod.ver)
-	if err != nil {
-		t.Errorf("Download protocol should succeed, instead it gave error %s \n", err)
-	}
+	assert.Nil(t, err)
+
 }
 
 func TestAsyncRedirect(t *testing.T) {
@@ -457,9 +439,8 @@ func TestAsyncRedirect(t *testing.T) {
 	})
 	mod, ver := "github.com/athens-artifacts/happy-path", "v0.0.1"
 	_, err = dp.Info(context.Background(), mod, ver)
-	if errors.Kind(err) != errors.KindNotFound {
-		t.Fatalf("expected async_redirect to enforce a 404 but got %v", errors.Kind(err))
-	}
+	require.Equal(t, errors.KindNotFound, errors.Kind(err))
+
 	<-ms.ch
 	info, err := dp.Info(context.Background(), mod, ver)
 	require.NoError(t, err)

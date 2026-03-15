@@ -11,6 +11,7 @@ import (
 	"github.com/gomods/athens/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/wow-look-at-my/testify/assert"
+	"github.com/wow-look-at-my/testify/require"
 )
 
 var ctx = context.Background()
@@ -116,9 +117,8 @@ func (s *ModuleSuite) TestGoGetDir() {
 	dirInfo, err := os.ReadDir(dir)
 	r.NoError(err)
 
-	if len(dirInfo) <= 0 {
-		t.Fatalf("expected the directory %q to have eat least one sub directory but it was empty", dir)
-	}
+	require.Greater(t, len(dirInfo), 0)
+
 }
 
 func (s *ModuleSuite) getProxy(h http.Handler) (addr string, close func()) {

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/gomods/athens/pkg/config"
+	"github.com/wow-look-at-my/testify/require"
 	"github.com/gomods/athens/pkg/index/compliance"
 )
 
@@ -14,9 +15,8 @@ func TestPostgres(t *testing.T) {
 	}
 	cfg := getTestConfig(t)
 	i, err := New(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	compliance.RunTests(t, i, i.(*indexer).clear)
 }
 
@@ -28,8 +28,7 @@ func (i *indexer) clear() error {
 func getTestConfig(t *testing.T) *config.Postgres {
 	t.Helper()
 	cfg, err := config.Load("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	return cfg.Index.Postgres
 }

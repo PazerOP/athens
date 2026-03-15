@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gomods/athens/pkg/config"
+	"github.com/wow-look-at-my/testify/require"
 	"github.com/gomods/athens/pkg/errors"
 	"github.com/gomods/athens/pkg/storage"
 	"github.com/gomods/athens/pkg/storage/gcp"
@@ -31,8 +32,8 @@ func TestWithGCS(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
 	const (
-		mod = "stashmod"
-		ver = "v1.0.0"
+		mod	= "stashmod"
+		ver	= "v1.0.0"
 	)
 	strg := getStorage(t)
 	strg.Delete(ctx, mod, ver)
@@ -40,18 +41,15 @@ func TestWithGCS(t *testing.T) {
 
 	// sanity check
 	_, err := strg.GoMod(ctx, mod, ver)
-	if !errors.Is(err, errors.KindNotFound) {
-		t.Fatalf("expected the stash bucket to return a NotFound error but got: %v", err)
-	}
+	require.True(t, errors.Is(err, errors.KindNotFound))
 
 	var eg errgroup.Group
 	for i := 0; i < 5; i++ {
 		content := uuid.New().String()
 		ms := &mockGCPStasher{strg, content}
 		gs, err := WithGCSLock(120, strg)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.Nil(t, err)
+
 		s := gs(ms)
 		eg.Go(func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -62,32 +60,25 @@ func TestWithGCS(t *testing.T) {
 	}
 
 	err = eg.Wait()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	info, err := strg.Info(ctx, mod, ver)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	modContent, err := strg.GoMod(ctx, mod, ver)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	zip, err := strg.Zip(ctx, mod, ver)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	defer zip.Close()
 	zipContent, err := io.ReadAll(zip)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(info, modContent) {
-		t.Fatalf("expected info and go.mod to be equal but info was {%v} and content was {%v}", string(info), string(modContent))
-	}
-	if !bytes.Equal(info, zipContent) {
-		t.Fatalf("expected info and zip to be equal but info was {%v} and content was {%v}", string(info), string(zipContent))
-	}
+	require.Nil(t, err)
+
+	require.True(t, bytes.Equal(info, modContent))
+
+	require.True(t, bytes.Equal(info, zipContent))
+
 }
 
 // TestWithGCSPartialFailure equires a real GCP backend implementation
@@ -97,8 +88,8 @@ func TestWithGCSPartialFailure(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
 	const (
-		mod = "stashmod"
-		ver = "v1.0.0"
+		mod	= "stashmod"
+		ver	= "v1.0.0"
 	)
 	strg := getStorage(t)
 	strg.Delete(ctx, mod, ver)
@@ -106,54 +97,40 @@ func TestWithGCSPartialFailure(t *testing.T) {
 
 	// sanity check
 	_, err := strg.GoMod(ctx, mod, ver)
-	if !errors.Is(err, errors.KindNotFound) {
-		t.Fatalf("expected the stash bucket to return a NotFound error but got: %v", err)
-	}
+	require.True(t, errors.Is(err, errors.KindNotFound))
 
 	content := uuid.New().String()
 	ms := &mockGCPStasher{strg, content}
 	fr := new(failReader)
 	gs, err := WithGCSLock(120, strg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	s := gs(ms)
 	// We simulate a failure by manually passing an io.Reader that will fail.
 	err = ms.strg.Save(ctx, "stashmod", "v1.0.0", []byte(ms.content), fr, nil, []byte(ms.content))
-	if err == nil {
-		// We *want* to fail.
-		t.Fatal(err)
-	}
+	require.NotNil(t, err)
 
 	// Now try a Stash. This should upload the missing files.
 	_, err = s.Stash(ctx, "stashmod", "v1.0.0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	info, err := strg.Info(ctx, mod, ver)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	modContent, err := strg.GoMod(ctx, mod, ver)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	zip, err := strg.Zip(ctx, mod, ver)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	defer zip.Close()
 	zipContent, err := io.ReadAll(zip)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(info, modContent) {
-		t.Fatalf("expected info and go.mod to be equal but info was {%v} and content was {%v}", string(info), string(modContent))
-	}
-	if !bytes.Equal(info, zipContent) {
-		t.Fatalf("expected info and zip to be equal but info was {%v} and content was {%v}", string(info), string(zipContent))
-	}
+	require.Nil(t, err)
+
+	require.True(t, bytes.Equal(info, modContent))
+
+	require.True(t, bytes.Equal(info, zipContent))
+
 }
 
 // mockGCPStasher is like mockStasher
@@ -161,8 +138,8 @@ func TestWithGCSPartialFailure(t *testing.T) {
 // so that redis can determine
 // whether to call the underlying stasher or not.
 type mockGCPStasher struct {
-	strg    storage.Backend
-	content string
+	strg	storage.Backend
+	content	string
 }
 
 func (ms *mockGCPStasher) Stash(ctx context.Context, mod, ver string) (string, error) {
@@ -186,9 +163,7 @@ func getStorage(t *testing.T) *gcp.Storage {
 	}
 
 	s, err := gcp.New(context.Background(), cfg, config.GetTimeoutDuration(30))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	return s
 }
@@ -199,7 +174,7 @@ func getTestConfig() *config.GCPConfig {
 		return nil
 	}
 	return &config.GCPConfig{
-		Bucket:  "athens_drone_stash_bucket",
-		JSONKey: creds,
+		Bucket:		"athens_drone_stash_bucket",
+		JSONKey:	creds,
 	}
 }

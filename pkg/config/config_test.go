@@ -12,13 +12,13 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/wow-look-at-my/testify/require"
+	"github.com/wow-look-at-my/testify/assert"
 )
 
 func testConfigFile(t *testing.T) (testConfigFile string) {
 	testConfigFile = filepath.Join("..", "..", "config.dev.toml")
-	if err := os.Chmod(testConfigFile, 0o700); err != nil {
-		t.Fatalf("%s\n", err)
-	}
+	require.NoError(t, os.Chmod(testConfigFile, 0o700))
+
 	return testConfigFile
 }
 
@@ -26,45 +26,36 @@ func compareConfigs(parsedConf *Config, expConf *Config, t *testing.T, ignoreTyp
 	t.Helper()
 	opts := cmpopts.IgnoreTypes(append([]any{Index{}}, ignoreTypes...)...)
 	eq := cmp.Equal(parsedConf, expConf, opts)
-	if !eq {
-		diff := cmp.Diff(parsedConf, expConf, opts)
-		t.Errorf("Parsed Example configuration did not match expected values. diff:\n%s", diff)
-	}
+	assert.True(t, eq)
+
 }
 
 func compareStorageConfigs(parsedStorage *Storage, expStorage *Storage, t *testing.T) {
 	eq := cmp.Equal(parsedStorage.Mongo, expStorage.Mongo)
-	if !eq {
-		t.Errorf("Parsed Example Storage configuration did not match expected values. Expected: %+v. Actual: %+v", expStorage.Mongo, parsedStorage.Mongo)
-	}
+	assert.True(t, eq)
+
 	eq = cmp.Equal(parsedStorage.Minio, expStorage.Minio)
-	if !eq {
-		t.Errorf("Parsed Example Storage configuration did not match expected values. Expected: %+v. Actual: %+v", expStorage.Minio, parsedStorage.Minio)
-	}
+	assert.True(t, eq)
+
 	eq = cmp.Equal(parsedStorage.Disk, expStorage.Disk)
-	if !eq {
-		t.Errorf("Parsed Example Storage configuration did not match expected values. Expected: %+v. Actual: %+v", expStorage.Disk, parsedStorage.Disk)
-	}
+	assert.True(t, eq)
+
 	eq = cmp.Equal(parsedStorage.GCP, expStorage.GCP)
-	if !eq {
-		t.Errorf("Parsed Example Storage configuration did not match expected values. Expected: %+v. Actual: %+v", expStorage.GCP, parsedStorage.GCP)
-	}
+	assert.True(t, eq)
+
 	eq = cmp.Equal(parsedStorage.S3, expStorage.S3)
-	if !eq {
-		t.Errorf("Parsed Example Storage configuration did not match expected values. Expected: %+v. Actual: %+v", expStorage.S3, parsedStorage.S3)
-	}
+	assert.True(t, eq)
+
 }
 
 func TestPortDefaultsCorrectly(t *testing.T) {
 	conf := &Config{}
 	err := envOverride(conf)
-	if err != nil {
-		t.Fatalf("Env override failed: %v", err)
-	}
+	require.Nil(t, err)
+
 	expPort := ":3000"
-	if conf.Port != expPort {
-		t.Errorf("Port was incorrect. Got: %s, want: %s", conf.Port, expPort)
-	}
+	assert.Equal(t, expPort, conf.Port)
+
 }
 
 func TestEnvOverrides(t *testing.T) {
@@ -105,9 +96,7 @@ func TestEnvOverrides(t *testing.T) {
 	}
 	conf := &Config{}
 	err := envOverride(conf)
-	if err != nil {
-		t.Fatalf("Env override failed: %v", err)
-	}
+	require.Nil(t, err)
 
 	compareConfigs(conf, expConf, t, Storage{}, SingleFlight{})
 }
@@ -117,44 +106,37 @@ func TestEnvOverridesPreservingPort(t *testing.T) {
 	const expPort = ":5000"
 	conf := &Config{Port: expPort}
 	err := envOverride(conf)
-	if err != nil {
-		t.Fatalf("Env override failed: %v", err)
-	}
-	if conf.Port != expPort {
-		t.Errorf("Port was incorrect. Got: %s, want: %s", conf.Port, expPort)
-	}
+	require.Nil(t, err)
+
+	assert.Equal(t, expPort, conf.Port)
+
 }
 
 func TestEnvOverridesPORT(t *testing.T) {
 	conf := &Config{Port: ""}
 	t.Setenv("PORT", "5000")
 	err := envOverride(conf)
-	if err != nil {
-		t.Fatalf("Env override failed: %v", err)
-	}
-	if conf.Port != ":5000" {
-		t.Fatalf("expected PORT env to be :5000 but got %v", conf.Port)
-	}
+	require.Nil(t, err)
+
+	require.Equal(t, ":5000", conf.Port)
+
 }
 
 func TestEnsurePortFormat(t *testing.T) {
 	port := "3000"
 	expected := ":3000"
 	given := ensurePortFormat(port)
-	if given != expected {
-		t.Fatalf("expected ensurePortFormat to add a colon to %v but got %v", port, given)
-	}
+	require.Equal(t, expected, given)
+
 	port = ":3000"
 	given = ensurePortFormat(port)
-	if given != expected {
-		t.Fatalf("expected ensurePortFormat to not add a colon when it's present but got %v", given)
-	}
+	require.Equal(t, expected, given)
+
 	port = "127.0.0.1:3000"
 	expected = "127.0.0.1:3000"
 	given = ensurePortFormat(port)
-	if given != expected {
-		t.Fatalf("expected ensurePortFormat to not add a colon when it's present but got %v", given)
-	}
+	require.Equal(t, expected, given)
+
 }
 
 func TestStorageEnvOverrides(t *testing.T) {
@@ -194,9 +176,8 @@ func TestStorageEnvOverrides(t *testing.T) {
 	}
 	conf := &Config{}
 	err := envOverride(conf)
-	if err != nil {
-		t.Fatalf("Env override failed: %v", err)
-	}
+	require.Nil(t, err)
+
 	compareStorageConfigs(conf.Storage, expStorage, t)
 }
 
@@ -297,13 +278,10 @@ func TestParseExampleConfig(t *testing.T) {
 	}
 
 	absPath, err := filepath.Abs(testConfigFile(t))
-	if err != nil {
-		t.Errorf("Unable to construct absolute path to example config file")
-	}
+	assert.Nil(t, err)
+
 	parsedConf, err := ParseConfigFile(absPath)
-	if err != nil {
-		t.Errorf("Unable to parse example config file: %+v", err)
-	}
+	assert.Nil(t, err)
 
 	compareConfigs(parsedConf, expConf, t)
 }
@@ -425,9 +403,8 @@ func Test_checkFilePerms(t *testing.T) {
 
 	for i := range incorrectPerms {
 		f, err := tempFile(incorrectPerms[i])
-		if err != nil {
-			t.Fatalf("tempFile creation error %s", err)
-		}
+		require.Nil(t, err)
+
 		incorrectFiles[i] = f
 		defer os.Remove(f)
 	}
@@ -437,9 +414,8 @@ func Test_checkFilePerms(t *testing.T) {
 
 	for i := range correctPerms {
 		f, err := tempFile(correctPerms[i])
-		if err != nil {
-			t.Fatalf("tempFile creation error %s", err)
-		}
+		require.Nil(t, err)
+
 		correctFiles[i] = f
 		defer os.Remove(f)
 	}
@@ -482,63 +458,51 @@ func Test_checkFilePerms(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := checkFilePerms(tt.files...); (err != nil) != tt.wantErr {
-				t.Errorf("checkFilePerms() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			err := checkFilePerms(tt.files)
+			assert.Equal(t, tt.wantErr, (err != nil))
+
 		})
 	}
 }
 
 func TestDefaultConfigMatchesConfigFile(t *testing.T) {
 	absPath, err := filepath.Abs(testConfigFile(t))
-	if err != nil {
-		t.Errorf("Unable to construct absolute path to example config file")
-	}
+	assert.Nil(t, err)
+
 	parsedConf, err := ParseConfigFile(absPath)
-	if err != nil {
-		t.Errorf("Unable to parse example config file: %+v", err)
-	}
+	assert.Nil(t, err)
 
 	defConf := defaultConfig()
 
 	ignoreStorageOpts := cmpopts.IgnoreTypes(&Storage{}, &Index{})
 	ignoreGoEnvOpts := cmpopts.IgnoreFields(Config{}, "GoEnv")
 	eq := cmp.Equal(defConf, parsedConf, ignoreStorageOpts, ignoreGoEnvOpts)
-	if !eq {
-		diff := cmp.Diff(defConf, parsedConf, ignoreStorageOpts, ignoreGoEnvOpts)
-		t.Errorf("Default values from the config file should equal to the default values returned in case the config file isn't provided. Diff:\n%s", diff)
-	}
+	assert.True(t, eq)
+
 }
 
 func TestEnvList(t *testing.T) {
 	el := EnvList{"KEY=VALUE"}
-	if !el.HasKey("KEY") {
-		t.Fatal("expected KEY to be present")
-	}
-	if el.HasKey("KEY=") {
-		t.Fatal("expected KEY= to not be found")
-	}
+	require.True(t, el.HasKey("KEY"))
+
+	require.False(t, el.HasKey("KEY="))
+
 	el.Add("HELLO", "WORLD")
-	if !el.HasKey("HELLO") {
-		t.Fatal("expected HELLO key to be found")
-	}
-	if err := el.Validate(); err != nil {
-		t.Fatalf("expected err to be nil but got %v", err)
-	}
+	require.True(t, el.HasKey("HELLO"))
+
+	require.NoError(t, el.Validate())
+
 	el = EnvList{"HELLO"}
-	if err := el.Validate(); err == nil {
-		t.Fatal("expected a validation error for incorrect formatting but got nil")
-	}
+	err := el.Validate()
+	require.NotNil(t, err)
+
 	el = EnvList{"GODEBUG=netdns=cgo"}
-	if !el.HasKey("GODEBUG") {
-		t.Fatal("expected GODEBUG key to be present")
-	}
-	if el.HasKey("GODEBUG=") {
-		t.Fatal("expected GODEBUG= key not to be found")
-	}
-	if err := el.Validate(); err != nil {
-		t.Fatalf("expected err to be nil but got %v", err)
-	}
+	require.True(t, el.HasKey("GODEBUG"))
+
+	require.False(t, el.HasKey("GODEBUG="))
+
+	require.NoError(t, el.Validate())
+
 }
 
 type decodeTestCase struct {
@@ -627,9 +591,8 @@ func TestEnvListDecode(t *testing.T) {
 		GoBinaryEnvVars: EnvList{"GOPROXY=direct"},
 	}
 	err := cfg.GoBinaryEnvVars.Decode("GOPROXY=https://proxy.golang.org; GOPRIVATE=github.com/gomods/*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	cfg.GoBinaryEnvVars.Validate()
 }
 
@@ -637,20 +600,17 @@ func TestNetworkMode(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.NetworkMode = "invalid"
 	err := validateConfig(*cfg)
-	if err == nil {
-		t.Fatal("expected network mode to cause validation to fail")
-	}
+	require.NotNil(t, err)
+
 	cfg.NetworkMode = ""
 	err = validateConfig(*cfg)
-	if err == nil {
-		t.Fatal("expected network mode to disallow empty strings")
-	}
+	require.NotNil(t, err)
+
 	for _, allowed := range [...]string{"strict", "offline", "fallback"} {
 		cfg.NetworkMode = allowed
 		err = validateConfig(*cfg)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.Nil(t, err)
+
 	}
 }
 
@@ -662,13 +622,11 @@ func testDecode(t *testing.T, tc decodeTestCase) {
 	}
 	config.GoBinaryEnvVars = tc.pre
 	err := envconfig.Process("", &config)
-	if tc.valid && err != nil {
-		t.Fatal(err)
-	}
+	require.False(t, tc.valid && err != nil)
+
 	if !tc.valid {
-		if err == nil {
-			t.Fatal("expected an error but got nil")
-		}
+		require.NotNil(t, err)
+
 		return
 	}
 	require.Equal(t, tc.expected, config.GoBinaryEnvVars)

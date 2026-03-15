@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gomods/athens/pkg/download"
+	"github.com/wow-look-at-my/testify/require"
 	"github.com/gomods/athens/pkg/paths"
 	"github.com/gomods/athens/pkg/storage"
 )
@@ -27,16 +28,15 @@ func TestPoolLogic(t *testing.T) {
 		go dp.List(ctx, "")
 	}
 	<-m.ch
-	if m.num != workers {
-		t.Fatalf("expected %d workers but got %v", workers, m.num)
-	}
+	require.Equal(t, workers, m.num)
+
 }
 
 type mockPool struct {
 	download.Protocol
-	num int
-	mu  sync.Mutex
-	ch  chan struct{}
+	num	int
+	mu	sync.Mutex
+	ch	chan struct{}
 }
 
 func (m *mockPool) List(ctx context.Context, mod string) ([]string, error) {
@@ -66,41 +66,35 @@ func TestPoolWrapper(t *testing.T) {
 		{Module: "pkg", Version: "v0.1.0"},
 	}
 	givenList, err := dp.List(ctx, mod)
-	if err != m.err {
-		t.Fatalf("expected dp.List err to be %v but got %v", m.err, err)
-	}
-	if !reflect.DeepEqual(m.list, givenList) {
-		t.Fatalf("dp.List: expected %v and %v to be equal", m.list, givenList)
-	}
+	require.Equal(t, m.err, err)
+
+	require.Equal(t, m.list, givenList)
+
 	m.info = []byte("info response")
 	givenInfo, err := dp.Info(ctx, mod, ver)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(m.info, givenInfo) {
-		t.Fatalf("dp.Info: expected %s and %s to be equal", m.info, givenInfo)
-	}
+	require.Nil(t, err)
+
+	require.True(t, bytes.Equal(m.info, givenInfo))
+
 	m.err = fmt.Errorf("mod err")
 	_, err = dp.GoMod(ctx, mod, ver)
-	if m.err.Error() != err.Error() {
-		t.Fatalf("dp.GoMod: expected err to be `%v` but got `%v`", m.err, err)
-	}
+	require.Equal(t, err.Error(), m.err.Error())
+
 	_, err = dp.Zip(ctx, mod, ver)
-	if m.err.Error() != err.Error() {
-		t.Fatalf("dp.Zip: expected err to be `%v` but got `%v`", m.err, err)
-	}
+	require.Equal(t, err.Error(), m.err.Error())
+
 }
 
 type mockDP struct {
-	err      error
-	list     []string
-	info     []byte
-	latest   *storage.RevInfo
-	gomod    []byte
-	zip      storage.SizeReadCloser
-	inputMod string
-	inputVer string
-	catalog  []paths.AllPathParams
+	err		error
+	list		[]string
+	info		[]byte
+	latest		*storage.RevInfo
+	gomod		[]byte
+	zip		storage.SizeReadCloser
+	inputMod	string
+	inputVer	string
+	catalog		[]paths.AllPathParams
 }
 
 // List implements GET /{module}/@v/list

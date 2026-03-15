@@ -4,21 +4,21 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"github.com/wow-look-at-my/testify/require"
 )
 
 func TestPoolWrapper(t *testing.T) {
 	m := &mockPoolStasher{inputMod: "mod", inputVer: "ver", err: fmt.Errorf("wrapped err")}
 	s := WithPool(2)(m)
 	_, err := s.Stash(context.Background(), m.inputMod, m.inputVer)
-	if err.Error() != m.err.Error() {
-		t.Fatalf("expected err to be `%v` but got `%v`", m.err, err)
-	}
+	require.Equal(t, m.err.Error(), err.Error())
+
 }
 
 type mockPoolStasher struct {
-	inputMod string
-	inputVer string
-	err      error
+	inputMod	string
+	inputVer	string
+	err		error
 }
 
 func (m *mockPoolStasher) Stash(ctx context.Context, mod, ver string) (string, error) {

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/gomods/athens/pkg/config"
@@ -22,6 +24,7 @@ import (
 	"github.com/gomods/athens/pkg/module"
 	"github.com/gomods/athens/pkg/stash"
 	"github.com/gomods/athens/pkg/storage"
+	"github.com/gomods/athens/pkg/sumlocal"
 	"github.com/gorilla/mux"
 	"github.com/spf13/afero"
 )
@@ -44,6 +47,34 @@ func addProxyRoutes(
 		return err
 	}
 	r.HandleFunc("/index", indexHandler(indexer))
+
+	// Local sumdb: compute and serve module hashes locally
+	// so Go clients can verify modules without contacting sum.golang.org.
+	if c.LocalSumDB {
+		sumdbDir := c.LocalSumDBDir
+		if sumdbDir == "" {
+			sumdbDir = filepath.Join(os.TempDir(), "athens-sumdb")
+		}
+		sumdbName := c.LocalSumDBName
+		if sumdbName == "" {
+			sumdbName = "athens.local"
+		}
+		localSumDB, err := sumlocal.New(sumdbDir, sumdbName, s)
+		if err != nil {
+			return fmt.Errorf("local sumdb: %w", err)
+		}
+		l.Infof("local sumdb enabled: name=%s verifier_key=%s", sumdbName, localSumDB.VerifierKey())
+
+		supportPath := path.Join("/sumdb", sumdbName, "/supported")
+		r.HandleFunc(supportPath, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		sumHandler := localSumDB.Handler()
+		pathPrefix := "/sumdb/" + sumdbName
+		r.PathPrefix(pathPrefix + "/").Handler(
+			http.StripPrefix(strings.TrimSuffix(c.PathPrefix, "/")+pathPrefix, sumHandler),
+		)
+	}
 
 	for _, sumdb := range c.SumDBs {
 		sumdbURL, err := url.Parse(sumdb)

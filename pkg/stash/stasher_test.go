@@ -7,42 +7,43 @@ import (
 	"testing"
 
 	"github.com/gomods/athens/pkg/index/nop"
+	"github.com/wow-look-at-my/testify/require"
 	"github.com/gomods/athens/pkg/storage"
 )
 
 type stashTest struct {
-	name             string
-	ver              string // the given version
-	modVer           string // the version module.Fetcher returns
-	shouldCallExists bool   // whether storage should be checked before saving
-	existsResponse   bool   // the response of storage.Exists if it's called
-	shouldCallSave   bool   // whether save or not should be called
+	name			string
+	ver			string	// the given version
+	modVer			string	// the version module.Fetcher returns
+	shouldCallExists	bool	// whether storage should be checked before saving
+	existsResponse		bool	// the response of storage.Exists if it's called
+	shouldCallSave		bool	// whether save or not should be called
 }
 
 var stashTests = [...]stashTest{
 	{
-		name:             "non semver",
-		ver:              "master",
-		modVer:           "v1.2.3",
-		shouldCallExists: true,
-		existsResponse:   false,
-		shouldCallSave:   true,
+		name:			"non semver",
+		ver:			"master",
+		modVer:			"v1.2.3",
+		shouldCallExists:	true,
+		existsResponse:		false,
+		shouldCallSave:		true,
 	},
 	{
-		name:             "no storage override",
-		ver:              "master",
-		modVer:           "v1.2.3",
-		shouldCallExists: true,
-		existsResponse:   true,
-		shouldCallSave:   false,
+		name:			"no storage override",
+		ver:			"master",
+		modVer:			"v1.2.3",
+		shouldCallExists:	true,
+		existsResponse:		true,
+		shouldCallSave:		false,
 	},
 	{
-		name:             "equal semver",
-		ver:              "v2.0.0",
-		modVer:           "v2.0.0",
-		shouldCallExists: false,
-		existsResponse:   false,
-		shouldCallSave:   true,
+		name:			"equal semver",
+		ver:			"v2.0.0",
+		modVer:			"v2.0.0",
+		shouldCallExists:	false,
+		existsResponse:		false,
+		shouldCallSave:		true,
 	},
 }
 
@@ -56,19 +57,15 @@ func TestStash(t *testing.T) {
 
 			s := New(&mf, &ms, nop.New())
 			newVersion, err := s.Stash(context.Background(), "module", testCase.ver)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if newVersion != testCase.modVer {
-				t.Fatalf("expected Stash to return %v from module.Fetcher but got %v", testCase.modVer, newVersion)
-			}
-			if testCase.shouldCallExists != ms.existsCalled {
-				t.Fatalf("expected a call to storage.Exists to be %v but got %v", testCase.shouldCallExists, ms.existsCalled)
-			}
+			require.Nil(t, err)
+
+			require.Equal(t, testCase.modVer, newVersion)
+
+			require.Equal(t, ms.existsCalled, testCase.shouldCallExists)
+
 			if testCase.shouldCallSave {
-				if ms.givenVersion != testCase.modVer {
-					t.Fatalf("expected storage.Save to be called with version %v but got %v", testCase.modVer, ms.givenVersion)
-				}
+				require.Equal(t, testCase.modVer, ms.givenVersion)
+
 			} else if ms.saveCalled {
 				t.Fatalf("expected save not to be called")
 			}
@@ -78,10 +75,10 @@ func TestStash(t *testing.T) {
 
 type mockStorage struct {
 	storage.Backend
-	existsCalled   bool
-	saveCalled     bool
-	givenVersion   string
-	existsResponse bool
+	existsCalled	bool
+	saveCalled	bool
+	givenVersion	string
+	existsResponse	bool
 }
 
 func (ms *mockStorage) Save(ctx context.Context, module, version string, mod []byte, zip io.Reader, zipMD5 []byte, info []byte) error {
@@ -101,9 +98,9 @@ type mockFetcher struct {
 
 func (mf *mockFetcher) Fetch(ctx context.Context, mod, ver string) (*storage.Version, error) {
 	return &storage.Version{
-		Info:   []byte("info"),
-		Mod:    []byte("gomod"),
-		Zip:    io.NopCloser(strings.NewReader("zipfile")),
-		Semver: mf.ver,
+		Info:	[]byte("info"),
+		Mod:	[]byte("gomod"),
+		Zip:	io.NopCloser(strings.NewReader("zipfile")),
+		Semver:	mf.ver,
 	}, nil
 }

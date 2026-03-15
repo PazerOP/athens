@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"github.com/wow-look-at-my/testify/require"
 )
 
 func TestCacheControl(t *testing.T) {
@@ -17,7 +18,6 @@ func TestCacheControl(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	given := w.Result().Header.Get("Cache-Control")
-	if given != expected {
-		t.Fatalf("expected cache-control header to be %v but got %v", expected, given)
-	}
+	require.Equal(t, expected, given)
+
 }

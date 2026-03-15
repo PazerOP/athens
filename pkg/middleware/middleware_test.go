@@ -23,9 +23,8 @@ const (
 
 func testConfigFile(t *testing.T) (testConfigFile string) {
 	testConfigFile = filepath.Join("..", "..", "config.dev.toml")
-	if err := os.Chmod(testConfigFile, 0o700); err != nil {
-		t.Fatalf("%s\n", err)
-	}
+	require.NoError(t, os.Chmod(testConfigFile, 0o700))
+
 	return testConfigFile
 }
 
@@ -64,9 +63,7 @@ func Test_FilterMiddleware(t *testing.T) {
 	defer os.Remove(filter.Name())
 
 	conf, err := config.GetConf(testConfigFile(t))
-	if err != nil {
-		t.Fatalf("Unable to parse config file: %s", err.Error())
-	}
+	require.Nil(t, err)
 
 	// Test with a filter file not existing
 	app, err := middlewareFilterApp("nofsfile", conf.GlobalEndpoint)

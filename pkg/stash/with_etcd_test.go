@@ -62,9 +62,8 @@ func startEtcdServer(t *testing.T) (endpoint string, e *etcdembed.Etcd) {
 	c.ListenClientUrls = []url.URL{{Host: "localhost:0"}}
 
 	e, err := etcdembed.StartEtcd(c)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	t.Cleanup(func() { e.Close() })
 
 	deadline, ok := t.Deadline()

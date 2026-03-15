@@ -123,9 +123,8 @@ func TestListMerge(t *testing.T) {
 	for _, tc := range listMergeTests {
 		t.Run(tc.name, func(t *testing.T) {
 			s, err := tc.newStorage()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.Nil(t, err)
+
 			for _, v := range tc.strVersions {
 				s.Save(ctx, testModName, v, bts, io.NopCloser(bytes.NewReader(bts)), nil, bts)
 			}
@@ -133,9 +132,9 @@ func TestListMerge(t *testing.T) {
 			dp := New(&Opts{s, nil, &listerMock{versions: tc.goVersions, err: tc.goErr}, nil, Strict})
 			list, err := dp.List(ctx, testModName)
 
-			if ok := testErrEq(tc.expectedErr, err); !ok {
-				t.Fatalf("expected err: %v, got: %v", tc.expectedErr, err)
-			}
+			ok := testErrEq(tc.expectedErr, err)
+			require.True(t, ok)
+
 			if tc.expectedErr != nil {
 				require.Equal(t, athenserr.Kind(tc.expectedErr), athenserr.Kind(err))
 			}

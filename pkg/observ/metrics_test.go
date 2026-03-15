@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"go.opencensus.io/stats/view"
+	"github.com/wow-look-at-my/testify/require"
 )
 
 func TestCacheLookupMetric(t *testing.T) {
 	// Register only the cache view
-	if err := view.Register(cacheLookupView); err != nil {
-		t.Fatalf("failed to register view: %v", err)
-	}
+	require.NoError(t, view.Register(cacheLookupView))
+
 	defer view.Unregister(cacheLookupView)
 
 	ctx := context.Background()
@@ -20,24 +20,18 @@ func TestCacheLookupMetric(t *testing.T) {
 	RecordCacheLookup(ctx, "hit", "info")
 
 	rows, err := view.RetrieveData("cache_lookup_total")
-	if err != nil {
-		t.Fatalf("failed to retrieve data: %v", err)
-	}
+	require.Nil(t, err)
 
-	if len(rows) != 1 {
-		t.Fatalf("expected 1 row, got %d", len(rows))
-	}
+	require.Equal(t, 1, len(rows))
 
 	count := rows[0].Data.(*view.CountData).Value
-	if count != 1 {
-		t.Fatalf("expected count 1, got %d", count)
-	}
+	require.Equal(t, int64(1), count)
+
 }
 
 func TestUpstreamFetchCounter(t *testing.T) {
-	if err := view.Register(upstreamFetchView); err != nil {
-		t.Fatalf("failed to register view: %v", err)
-	}
+	require.NoError(t, view.Register(upstreamFetchView))
+
 	defer view.Unregister(upstreamFetchView)
 
 	ctx := context.Background()
@@ -45,24 +39,18 @@ func TestUpstreamFetchCounter(t *testing.T) {
 	RecordUpstreamFetch(ctx, "success")
 
 	rows, err := view.RetrieveData("upstream_fetch_total")
-	if err != nil {
-		t.Fatalf("failed to retrieve data: %v", err)
-	}
+	require.Nil(t, err)
 
-	if len(rows) != 1 {
-		t.Fatalf("expected 1 row, got %d", len(rows))
-	}
+	require.Equal(t, 1, len(rows))
 
 	count := rows[0].Data.(*view.CountData).Value
-	if count != 1 {
-		t.Fatalf("expected count 1, got %d", count)
-	}
+	require.Equal(t, int64(1), count)
+
 }
 
 func TestUpstreamFetchDurationHistogram(t *testing.T) {
-	if err := view.Register(upstreamFetchLatencyView); err != nil {
-		t.Fatalf("failed to register view: %v", err)
-	}
+	require.NoError(t, view.Register(upstreamFetchLatencyView))
+
 	defer view.Unregister(upstreamFetchLatencyView)
 
 	ctx := context.Background()
@@ -70,17 +58,12 @@ func TestUpstreamFetchDurationHistogram(t *testing.T) {
 	RecordUpstreamFetchDuration(ctx, "success", 2*time.Second)
 
 	rows, err := view.RetrieveData("upstream_fetch_duration_seconds")
-	if err != nil {
-		t.Fatalf("failed to retrieve data: %v", err)
-	}
+	require.Nil(t, err)
 
-	if len(rows) != 1 {
-		t.Fatalf("expected 1 row, got %d", len(rows))
-	}
+	require.Equal(t, 1, len(rows))
 
 	dist := rows[0].Data.(*view.DistributionData)
 
-	if dist.Count != 1 {
-		t.Fatalf("expected count 1, got %d", dist.Count)
-	}
+	require.Equal(t, int64(1), dist.Count)
+
 }

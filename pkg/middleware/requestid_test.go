@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gomods/athens/pkg/requestid"
+	"github.com/wow-look-at-my/testify/require"
 	"github.com/google/uuid"
 )
 
@@ -19,13 +20,11 @@ func TestWithRequestID(t *testing.T) {
 	req.Header.Set(requestid.HeaderKey, expectedRequestID)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
-	if givenRequestID != expectedRequestID {
-		t.Fatalf("expected request id to be %q but got %q", expectedRequestID, givenRequestID)
-	}
+	require.Equal(t, expectedRequestID, givenRequestID)
+
 	req = httptest.NewRequest("GET", "/", nil)
 	w = httptest.NewRecorder()
 	h.ServeHTTP(w, req)
-	if givenRequestID == "" {
-		t.Fatal("expected a request id to be created when a request id header is empty")
-	}
+	require.NotEqual(t, "", givenRequestID)
+
 }

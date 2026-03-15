@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"golang.org/x/sync/errgroup"
+	"github.com/wow-look-at-my/testify/require"
 )
 
 // TestSingleFlight will ensure that 5 concurrent requests will all get the first request's
@@ -26,9 +27,7 @@ func TestSingleFlight(t *testing.T) {
 	}
 
 	err := eg.Wait()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	for i := 0; i < 5; i++ {
 		eg.Go(func() error {
@@ -37,9 +36,8 @@ func TestSingleFlight(t *testing.T) {
 		})
 	}
 	err = eg.Wait()
-	if err == nil {
-		t.Fatal("expected second error to return")
-	}
+	require.NotNil(t, err)
+
 }
 
 // mockSFStasher mocks a Stash request that
@@ -48,12 +46,12 @@ func TestSingleFlight(t *testing.T) {
 // request did not get a second result, but the first
 // one, provided the request came in at the right time.
 type mockSFStasher struct {
-	mu  sync.Mutex
-	num int
+	mu	sync.Mutex
+	num	int
 }
 
 func (ms *mockSFStasher) Stash(ctx context.Context, mod, ver string) (string, error) {
-	time.Sleep(time.Millisecond * 100) // allow for second requests to come in.
+	time.Sleep(time.Millisecond * 100)	// allow for second requests to come in.
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 	if ms.num == 0 {

@@ -53,6 +53,9 @@ type Config struct {
 	TLSKeyFile       string    `envconfig:"ATHENS_TLSKEY_FILE"`
 	SumDBs           []string  `envconfig:"ATHENS_SUM_DBS"`
 	NoSumPatterns    []string  `envconfig:"ATHENS_GONOSUM_PATTERNS"`
+	LocalSumDB       bool      `envconfig:"ATHENS_LOCAL_SUMDB"`
+	LocalSumDBDir    string    `envconfig:"ATHENS_LOCAL_SUMDB_DIR"`
+	LocalSumDBName   string    `envconfig:"ATHENS_LOCAL_SUMDB_NAME"`
 	DownloadMode     mode.Mode `envconfig:"ATHENS_DOWNLOAD_MODE"`
 	DownloadURL      string    `envconfig:"ATHENS_DOWNLOAD_URL"`
 	NetworkMode      string    `envconfig:"ATHENS_NETWORK_MODE"       validate:"oneof=strict offline fallback"`

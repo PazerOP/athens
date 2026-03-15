@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gomods/athens/pkg/config"
+	"github.com/wow-look-at-my/testify/require"
 	"github.com/gomods/athens/pkg/storage"
 	"github.com/gomods/athens/pkg/storage/mem"
 	"golang.org/x/sync/errgroup"
@@ -23,16 +24,14 @@ func TestWithRedisSentinelLock(t *testing.T) {
 		t.SkipNow()
 	}
 	strg, err := mem.NewStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	ms := &mockRedisStasher{strg: strg}
 	l := &testingRedisLogger{t: t}
 
 	wrapper, err := WithRedisSentinelLock(l, []string{endpoint}, masterName, sentinelPassword, "", "", storage.WithChecker(strg), config.DefaultRedisLockConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	s := wrapper(ms)
 
 	var eg errgroup.Group
@@ -46,9 +45,8 @@ func TestWithRedisSentinelLock(t *testing.T) {
 	}
 
 	err = eg.Wait()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 }
 
 // TestWithRedisSentinelLockWithRedisPassword verifies WithRedisSentinelLock working with
@@ -62,15 +60,13 @@ func TestWithRedisSentinelLockWithRedisPassword(t *testing.T) {
 		t.SkipNow()
 	}
 	strg, err := mem.NewStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	ms := &mockRedisStasher{strg: strg}
 	l := &testingRedisLogger{t: t}
 	wrapper, err := WithRedisSentinelLock(l, []string{endpoint}, masterName, sentinelPassword, "", redisPassword, storage.WithChecker(strg), config.DefaultRedisLockConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	s := wrapper(ms)
 
 	var eg errgroup.Group
@@ -84,9 +80,8 @@ func TestWithRedisSentinelLockWithRedisPassword(t *testing.T) {
 	}
 
 	err = eg.Wait()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 }
 
 // TestWithRedisSentinelLockWithPassword verifies WithRedisSentinelLock working with
@@ -101,15 +96,13 @@ func TestWithRedisSentinelLockWithUsernameAndPassword(t *testing.T) {
 		t.SkipNow()
 	}
 	strg, err := mem.NewStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	ms := &mockRedisStasher{strg: strg}
 	l := &testingRedisLogger{t: t}
 	wrapper, err := WithRedisSentinelLock(l, []string{endpoint}, masterName, sentinelPassword, redisUsername, redisPassword, storage.WithChecker(strg), config.DefaultRedisLockConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	s := wrapper(ms)
 
 	var eg errgroup.Group
@@ -123,9 +116,8 @@ func TestWithRedisSentinelLockWithUsernameAndPassword(t *testing.T) {
 	}
 
 	err = eg.Wait()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 }
 
 // TestWithRedisSentinelLockWithWrongPassword verifies the WithRedisSentinelLock fails
@@ -139,20 +131,16 @@ func TestWithRedisSentinelLockWithWrongRedisPassword(t *testing.T) {
 		t.SkipNow()
 	}
 	strg, err := mem.NewStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	l := &testingRedisLogger{t: t}
 
 	// Test with wrong sentinel password
 	_, err = WithRedisSentinelLock(l, []string{endpoint}, masterName, "wrong-sentinel-password", "", redisPassword, storage.WithChecker(strg), config.DefaultRedisLockConfig())
-	if err == nil {
-		t.Fatal("Expected Connection Error for wrong sentinel password")
-	}
+	require.NotNil(t, err)
 
 	// Test with wrong redis password
 	_, err = WithRedisSentinelLock(l, []string{endpoint}, masterName, sentinelPassword, "", "wrong-redis-password", storage.WithChecker(strg), config.DefaultRedisLockConfig())
-	if err == nil {
-		t.Fatal("Expected Connection Error for wrong redis password")
-	}
+	require.NotNil(t, err)
+
 }

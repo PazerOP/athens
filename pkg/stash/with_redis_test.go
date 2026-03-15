@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/wow-look-at-my/testify/assert"
+	"github.com/wow-look-at-my/testify/require"
 	"github.com/gomods/athens/pkg/config"
 	"github.com/gomods/athens/pkg/errors"
 	"github.com/gomods/athens/pkg/storage"
@@ -36,15 +38,13 @@ func TestWithRedisLock(t *testing.T) {
 		t.SkipNow()
 	}
 	strg, err := mem.NewStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	ms := &mockRedisStasher{strg: strg}
 	l := &testingRedisLogger{t: t}
 	wrapper, err := WithRedisLock(l, endpoint, password, storage.WithChecker(strg), config.DefaultRedisLockConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	s := wrapper(ms)
 
 	var eg errgroup.Group
@@ -58,9 +58,8 @@ func TestWithRedisLock(t *testing.T) {
 	}
 
 	err = eg.Wait()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 }
 
 // Verify with WithRedisLock working with password protected redis
@@ -72,15 +71,13 @@ func TestWithRedisLockWithPassword(t *testing.T) {
 		t.SkipNow()
 	}
 	strg, err := mem.NewStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	ms := &mockRedisStasher{strg: strg}
 	l := &testingRedisLogger{t: t}
 	wrapper, err := WithRedisLock(l, endpoint, password, storage.WithChecker(strg), config.DefaultRedisLockConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	s := wrapper(ms)
 
 	var eg errgroup.Group
@@ -94,9 +91,8 @@ func TestWithRedisLockWithPassword(t *testing.T) {
 	}
 
 	err = eg.Wait()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 }
 
 // Verify the WithRedisLock fails with the correct error when trying
@@ -108,83 +104,72 @@ func TestWithRedisLockWithWrongPassword(t *testing.T) {
 		t.SkipNow()
 	}
 	strg, err := mem.NewStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	l := &testingRedisLogger{t: t}
 	_, err = WithRedisLock(l, endpoint, password, storage.WithChecker(strg), config.DefaultRedisLockConfig())
-	if err == nil {
-		t.Fatal("Expected Connection Error")
-	}
+	require.NotNil(t, err)
 
-	if !strings.Contains(err.Error(), "NOAUTH Authentication required.") {
-		t.Fatalf("Wrong error was thrown %q\n", err.Error())
-	}
+	require.Contains(t, err.Error(), "NOAUTH Authentication required.")
+
 }
 
 type getRedisClientOptionsFacet struct {
-	endpoint string
-	password string
-	options  *redis.Options
-	err      error
+	endpoint	string
+	password	string
+	options		*redis.Options
+	err		error
 }
 
 func Test_getRedisClientOptions(t *testing.T) {
 	facets := []*getRedisClientOptionsFacet{
 		{
-			endpoint: "127.0.0.1:6379",
+			endpoint:	"127.0.0.1:6379",
 			options: &redis.Options{
 				Addr: "127.0.0.1:6379",
 			},
 		},
 		{
-			endpoint: "127.0.0.1:6379",
-			password: "1234",
+			endpoint:	"127.0.0.1:6379",
+			password:	"1234",
 			options: &redis.Options{
-				Addr:     "127.0.0.1:6379",
-				Password: "1234",
+				Addr:		"127.0.0.1:6379",
+				Password:	"1234",
 			},
 		},
 		{
-			endpoint: "rediss://username:password@127.0.0.1:6379",
-			password: "1234", // Ignored because password was parsed
-			err:      errors.E("stash.WithRedisLock", errPasswordsDoNotMatch),
+			endpoint:	"rediss://username:password@127.0.0.1:6379",
+			password:	"1234",	// Ignored because password was parsed
+			err:		errors.E("stash.WithRedisLock", errPasswordsDoNotMatch),
 		},
 		{
-			endpoint: "rediss://username:password@127.0.0.1:6379",
-			password: "1234", // Ignored because password was parsed
-			err:      errors.E("stash.WithRedisLock", errPasswordsDoNotMatch),
+			endpoint:	"rediss://username:password@127.0.0.1:6379",
+			password:	"1234",	// Ignored because password was parsed
+			err:		errors.E("stash.WithRedisLock", errPasswordsDoNotMatch),
 		},
 	}
 
 	for i, facet := range facets {
 		options, err := getRedisClientOptions(facet.endpoint, facet.password)
-		if err != nil && facet.err == nil {
-			t.Errorf("Facet %d: no error produced", i)
-			continue
-		}
+		assert.False(t, err != nil && facet.err == nil)
+
 		if facet.err != nil {
 			if err == nil {
 				t.Errorf("Facet %d: no error produced", i)
 			} else {
-				if err.Error() != facet.err.Error() {
-					t.Errorf("Facet %d: expected %q, got %q", i, facet.err, err)
-				}
+				assert.Equal(t, facet.err.Error(), err.Error())
+
 			}
 		}
 
 		if err != nil {
 			continue
 		}
-		if facet.options.Addr != options.Addr {
-			t.Errorf("Facet %d: Expected Addr %q, got %q", i, facet.options.Addr, options.Addr)
-		}
-		if facet.options.Username != options.Username {
-			t.Errorf("Facet %d: Expected Username %q, got %q", i, facet.options.Username, options.Username)
-		}
-		if facet.options.Password != options.Password {
-			t.Errorf("Facet %d: Expected Password %q, got %q", i, facet.options.Password, options.Password)
-		}
+		assert.Equal(t, options.Addr, facet.options.Addr)
+
+		assert.Equal(t, options.Username, facet.options.Username)
+
+		assert.Equal(t, options.Password, facet.options.Password)
 
 	}
 }
@@ -194,13 +179,13 @@ func Test_getRedisClientOptions(t *testing.T) {
 // so that redis can determine
 // whether to call the underlying stasher or not.
 type mockRedisStasher struct {
-	strg storage.Backend
-	mu   sync.Mutex
-	num  int
+	strg	storage.Backend
+	mu	sync.Mutex
+	num	int
 }
 
 func (ms *mockRedisStasher) Stash(ctx context.Context, mod, ver string) (string, error) {
-	time.Sleep(time.Millisecond * 100) // allow for second requests to come in.
+	time.Sleep(time.Millisecond * 100)	// allow for second requests to come in.
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 	if ms.num == 0 {
