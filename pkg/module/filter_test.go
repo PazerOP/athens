@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/suite"
+	"github.com/wow-look-at-my/testify/suite"
 )
 
 func testConfigFile(t *testing.T) (testConfigFile string) {

@@ -11,14 +11,14 @@ import (
 	"github.com/gomods/athens/pkg/config"
 	"github.com/gomods/athens/pkg/module"
 	"github.com/gorilla/mux"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
+	"github.com/wow-look-at-my/testify/require"
+	"github.com/wow-look-at-my/testify/suite"
 )
 
 // Avoid import cycle.
 const (
-	pathList        = "/{module:.+}/@v/list"
-	pathVersionInfo = "/{module:.+}/@v/{version}.info"
+	pathList	= "/{module:.+}/@v/list"
+	pathVersionInfo	= "/{module:.+}/@v/{version}.info"
 )
 
 func testConfigFile(t *testing.T) (testConfigFile string) {
@@ -102,9 +102,9 @@ func hookFilterApp(hook string) *mux.Router {
 }
 
 type hookMock struct {
-	invoked bool
-	params  validationParams
-	resCode int
+	invoked	bool
+	params	validationParams
+	resCode	int
 }
 
 func (m *hookMock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -116,9 +116,9 @@ func (m *hookMock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type HookTestsSuite struct {
 	suite.Suite
-	mock   hookMock
-	server *ht.Server
-	w      *ht.Handler
+	mock	hookMock
+	server	*ht.Server
+	w	*ht.Handler
 }
 
 func (suite *HookTestsSuite) SetupSuite() {
