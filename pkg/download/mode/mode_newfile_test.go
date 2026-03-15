@@ -72,6 +72,7 @@ func TestNewFile_CustomPrefix_InvalidHCL(t *testing.T) {
 func TestParseFile_InvalidMode(t *testing.T) {
 	hcl := `
 mode = "sync"
+downloadURL = "https://proxy.golang.org"
 download "github.com/bad/*" {
   mode = "invalid_mode"
 }

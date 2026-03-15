@@ -10,8 +10,7 @@ import (
 	"github.com/wow-look-at-my/testify/require"
 )
 
-func TestCatalogHandler_NotImplemented(t *testing.T) {
-	// mem storage doesn't implement Cataloger
+func TestCatalogHandler_OK(t *testing.T) {
 	s, err := mem.NewStorage()
 	require.NoError(t, err)
 
@@ -20,7 +19,11 @@ func TestCatalogHandler_NotImplemented(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
-	require.Equal(t, 501, w.Code)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var res catalogRes
+	err = json.NewDecoder(w.Body).Decode(&res)
+	require.NoError(t, err)
 }
 
 func TestGetLimitFromParam_Empty(t *testing.T) {
