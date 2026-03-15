@@ -4,6 +4,7 @@
 package sumlocal
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -16,8 +17,6 @@ import (
 	"strings"
 	"sync"
 
-	"archive/zip"
-
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/sumdb"
 	"golang.org/x/mod/sumdb/dirhash"
@@ -26,8 +25,6 @@ import (
 
 	"github.com/gomods/athens/pkg/storage"
 )
-
-const tileHeight = 8
 
 // Server implements sumdb.ServerOps for a local checksum database.
 // It lazily computes hashes from the storage backend on first lookup.
@@ -49,7 +46,7 @@ type Server struct {
 // name is the server name for signatures (e.g. "athens.local").
 // s is the storage backend used to fetch module zips and go.mod files for hashing.
 func New(dir, name string, s storage.Backend) (*Server, error) {
-	if err := os.MkdirAll(filepath.Join(dir, "records"), 0o777); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "records"), 0o750); err != nil {
 		return nil, fmt.Errorf("sumlocal: mkdir: %w", err)
 	}
 
@@ -65,7 +62,7 @@ func New(dir, name string, s storage.Backend) (*Server, error) {
 	}
 
 	hashPath := filepath.Join(dir, "hashes.bin")
-	f, err := os.OpenFile(hashPath, os.O_RDWR|os.O_CREATE, 0o666)
+	f, err := os.OpenFile(hashPath, os.O_RDWR|os.O_CREATE, 0o600) //nolint:gosec // path is constructed from trusted dir parameter
 	if err != nil {
 		return nil, fmt.Errorf("sumlocal: open hashes: %w", err)
 	}
@@ -97,8 +94,9 @@ func (s *Server) loadOrGenerateKey() error {
 	skeyPath := filepath.Join(s.dir, "skey")
 	vkeyPath := filepath.Join(s.dir, "vkey")
 
-	skeyData, err := os.ReadFile(skeyPath)
-	if os.IsNotExist(err) {
+	skeyData, err := os.ReadFile(skeyPath) //nolint:gosec // path is constructed from trusted dir
+	switch {
+	case os.IsNotExist(err):
 		skey, vkey, err := note.GenerateKey(rand.Reader, s.name)
 		if err != nil {
 			return err
@@ -106,15 +104,15 @@ func (s *Server) loadOrGenerateKey() error {
 		if err := os.WriteFile(skeyPath, []byte(skey), 0o600); err != nil {
 			return err
 		}
-		if err := os.WriteFile(vkeyPath, []byte(vkey), 0o644); err != nil {
+		if err := os.WriteFile(vkeyPath, []byte(vkey), 0o600); err != nil {
 			return err
 		}
 		skeyData = []byte(skey)
 		s.vkey = vkey
-	} else if err != nil {
+	case err != nil:
 		return err
-	} else {
-		vkeyData, err := os.ReadFile(vkeyPath)
+	default:
+		vkeyData, err := os.ReadFile(vkeyPath) //nolint:gosec // path is constructed from trusted dir
 		if err != nil {
 			return err
 		}
@@ -211,7 +209,7 @@ func (s *Server) ReadRecords(_ context.Context, id, n int64) ([][]byte, error) {
 // Lookup implements sumdb.ServerOps.
 // If the module@version is not yet in the log, it fetches the zip and go.mod
 // from storage, computes the hashes, and adds the record.
-func (s *Server) Lookup(_ context.Context, m module.Version) (int64, error) {
+func (s *Server) Lookup(ctx context.Context, m module.Version) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -221,7 +219,7 @@ func (s *Server) Lookup(_ context.Context, m module.Version) (int64, error) {
 	}
 
 	// Compute hashes from storage
-	zipHash, modHash, err := s.computeHashes(m.Path, m.Version)
+	zipHash, modHash, err := s.computeHashes(ctx, m.Path, m.Version)
 	if err != nil {
 		return 0, &os.PathError{Op: "lookup", Path: key, Err: os.ErrNotExist}
 	}
@@ -244,7 +242,7 @@ func (s *Server) readHashTile(tile tlog.Tile) ([]byte, error) {
 	result := make([]byte, 0, tile.W*tlog.HashSize)
 	for i := 0; i < tile.W; i++ {
 		level := tile.L * tile.H
-		n := tile.N*int64(1<<uint(tile.H)) + int64(i)
+		n := tile.N*int64(1<<uint(tile.H)) + int64(i) //nolint:gosec // tile.H is always a small positive int from tlog
 		idx := tlog.StoredHashIndex(level, n)
 
 		h := make([]byte, tlog.HashSize)
@@ -252,24 +250,6 @@ func (s *Server) readHashTile(tile tlog.Tile) ([]byte, error) {
 			return nil, fmt.Errorf("read hash at stored index %d: %w", idx, err)
 		}
 		result = append(result, h...)
-	}
-	return result, nil
-}
-
-func (s *Server) readDataTile(tile tlog.Tile) ([]byte, error) {
-	var result []byte
-	start := tile.N * int64(1<<uint(tile.H))
-	for i := 0; i < tile.W; i++ {
-		id := start + int64(i)
-		text, err := os.ReadFile(filepath.Join(s.dir, "records", strconv.FormatInt(id, 10)))
-		if err != nil {
-			return nil, err
-		}
-		entry, err := tlog.FormatRecord(id, text)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, entry...)
 	}
 	return result, nil
 }
@@ -299,7 +279,7 @@ func (s *Server) addRecord(mod, ver, zipHash, modHash string) (int64, error) {
 
 	// Save record text
 	recordPath := filepath.Join(s.dir, "records", strconv.FormatInt(id, 10))
-	if err := os.WriteFile(recordPath, []byte(text), 0o666); err != nil {
+	if err := os.WriteFile(recordPath, []byte(text), 0o600); err != nil {
 		return 0, err
 	}
 
@@ -310,9 +290,7 @@ func (s *Server) addRecord(mod, ver, zipHash, modHash string) (int64, error) {
 
 // computeHashes fetches a module's zip and go.mod from storage and computes
 // the h1: hashes used in go.sum.
-func (s *Server) computeHashes(mod, ver string) (zipHash, modHash string, err error) {
-	ctx := context.Background()
-
+func (s *Server) computeHashes(ctx context.Context, mod, ver string) (zipHash, modHash string, err error) {
 	// Get go.mod and compute its hash
 	gomod, err := s.storage.GoMod(ctx, mod, ver)
 	if err != nil {
@@ -351,7 +329,7 @@ func HashZipData(data []byte) (string, error) {
 		return "", err
 	}
 
-	var files []string
+	files := make([]string, 0, len(z.File))
 	zfiles := make(map[string]*zip.File)
 	for _, f := range z.File {
 		files = append(files, f.Name)

@@ -180,7 +180,7 @@ func TestReadTileData(t *testing.T) {
 	require.Nil(t, err)
 
 	// Read the leaf hash tile
-	tile := tlog.Tile{H: tileHeight, L: 0, N: 0, W: 1}
+	tile := tlog.Tile{H: 8, L: 0, N: 0, W: 1}
 	data, err := srv.ReadTileData(ctx, tile)
 	require.Nil(t, err)
 	assert.Len(t, data, tlog.HashSize)

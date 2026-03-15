@@ -9,9 +9,10 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/wow-look-at-my/testify/require"
+
 	"github.com/gomods/athens/pkg/errors"
 	"github.com/gomods/athens/pkg/storage"
-	"github.com/wow-look-at-my/testify/require"
 )
 
 // RunTests takes a backend implementation and runs compliance tests
