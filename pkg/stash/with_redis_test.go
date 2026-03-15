@@ -154,9 +154,8 @@ func Test_getRedisClientOptions(t *testing.T) {
 		assert.False(t, err != nil && facet.err == nil)
 
 		if facet.err != nil {
-			if err == nil {
-				t.Errorf("Facet %d: no error produced", i)
-			} else {
+			assert.NotNil(t, err, "Facet %d: no error produced", i)
+			if err != nil {
 				assert.Equal(t, facet.err.Error(), err.Error())
 
 			}

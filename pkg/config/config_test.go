@@ -458,7 +458,7 @@ func Test_checkFilePerms(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := checkFilePerms(tt.files)
+			err := checkFilePerms(tt.files...)
 			assert.Equal(t, tt.wantErr, (err != nil))
 
 		})

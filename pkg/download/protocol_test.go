@@ -237,11 +237,8 @@ func TestLatest(t *testing.T) {
 	for _, tc := range latestTests {
 		t.Run(tc.name, func(t *testing.T) {
 			info, err := dp.Latest(ctx, tc.path)
-			if !tc.err && err != nil {
-				t.Fatal(err)
-			} else if tc.err && err == nil {
-				t.Fatalf("expected %v error but got nil", tc.err)
-			}
+			require.False(t, !tc.err && err != nil, err)
+			require.False(t, tc.err && err == nil, "expected %v error but got nil", tc.err)
 
 			require.EqualValues(t, tc.info, info)
 		})
