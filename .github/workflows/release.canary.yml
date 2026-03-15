@@ -2,8 +2,6 @@ name: Release canary
 
 on:
   push:
-    branches:
-      - main
 
 jobs:
   docker-push-main:

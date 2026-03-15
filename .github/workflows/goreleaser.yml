@@ -2,8 +2,6 @@ name: Publish Build Artifacts
 
 on:
   push:
-    tags:
-      - '*'
 
 jobs:
   goreleaser:
