@@ -82,6 +82,17 @@ func TestPoolWrapper(t *testing.T) {
 	_, err = dp.Zip(ctx, mod, ver)
 	require.Equal(t, err.Error(), m.err.Error())
 
+	// Test Latest
+	m.err = nil
+	m.latest = &storage.RevInfo{Version: "v0.1.0"}
+	gotLatest, err := dp.Latest(ctx, mod)
+	require.NoError(t, err)
+	require.Equal(t, m.latest.Version, gotLatest.Version)
+
+	// Test Latest with error
+	m.err = fmt.Errorf("latest err")
+	_, err = dp.Latest(ctx, mod)
+	require.Error(t, err)
 }
 
 type mockDP struct {

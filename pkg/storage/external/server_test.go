@@ -98,4 +98,24 @@ func TestNewServer_WithData(t *testing.T) {
 	w = httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 	require.Equal(t, http.StatusOK, w.Code)
+
+	// Test zip
+	req = httptest.NewRequest(http.MethodGet, "/github.com/test/mod/@v/v1.0.0.zip", nil)
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+	require.NotEmpty(t, w.Body.Bytes())
+	require.NotEmpty(t, w.Header().Get("Content-Length"))
+
+	// Test delete
+	req = httptest.NewRequest(http.MethodDelete, "/github.com/test/mod/@v/v1.0.0.delete", nil)
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	// Verify deleted
+	req = httptest.NewRequest(http.MethodGet, "/github.com/test/mod/@v/v1.0.0.info", nil)
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	require.Equal(t, http.StatusNotFound, w.Code)
 }
