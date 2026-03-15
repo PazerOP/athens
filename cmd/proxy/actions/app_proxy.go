@@ -17,9 +17,7 @@ import (
 	"github.com/gomods/athens/pkg/download/mode"
 	"github.com/gomods/athens/pkg/index"
 	"github.com/gomods/athens/pkg/index/mem"
-	"github.com/gomods/athens/pkg/index/mysql"
 	"github.com/gomods/athens/pkg/index/nop"
-	"github.com/gomods/athens/pkg/index/postgres"
 	"github.com/gomods/athens/pkg/log"
 	"github.com/gomods/athens/pkg/module"
 	"github.com/gomods/athens/pkg/stash"
@@ -168,6 +166,17 @@ func (l *athensLoggerForRedis) Printf(ctx context.Context, format string, v ...a
 	l.logger.WithContext(ctx).Printf(format, v...)
 }
 
+// SingleFlightFactory creates a stash.Wrapper from configuration.
+type SingleFlightFactory func(l *log.Logger, c *config.Config, s storage.Backend, checker storage.Checker) (stash.Wrapper, error)
+
+// singleFlightRegistry holds registered single flight factories.
+var singleFlightRegistry = map[string]SingleFlightFactory{}
+
+// RegisterSingleFlight registers a single flight factory for a given type name.
+func RegisterSingleFlight(name string, factory SingleFlightFactory) {
+	singleFlightRegistry[name] = factory
+}
+
 func getSingleFlight(l *log.Logger, c *config.Config, s storage.Backend, checker storage.Checker) (stash.Wrapper, error) {
 	switch c.SingleFlightType {
 	case "", "memory":
@@ -202,19 +211,24 @@ func getSingleFlight(l *log.Logger, c *config.Config, s storage.Backend, checker
 			checker,
 			c.SingleFlight.RedisSentinel.LockConfig,
 		)
-	case "gcp":
-		if c.StorageType != "gcp" {
-			return nil, fmt.Errorf("gcp SingleFlight only works with a gcp storage type and not: %v", c.StorageType)
-		}
-		return stash.WithGCSLock(c.SingleFlight.GCP.StaleThreshold, s)
-	case "azureblob":
-		if c.StorageType != "azureblob" {
-			return nil, fmt.Errorf("azureblob SingleFlight only works with a azureblob storage type and not: %v", c.StorageType)
-		}
-		return stash.WithAzureBlobLock(c.Storage.AzureBlob, c.TimeoutDuration(), checker)
 	default:
-		return nil, fmt.Errorf("unrecognized single flight type: %v", c.SingleFlightType)
+		// Check registry for build-tagged backends
+		if factory, ok := singleFlightRegistry[c.SingleFlightType]; ok {
+			return factory(l, c, s, checker)
+		}
+		return nil, fmt.Errorf("single flight type %q is unknown (you may need to build with -tags %s)", c.SingleFlightType, c.SingleFlightType)
 	}
+}
+
+// IndexFactory creates an index.Indexer from configuration.
+type IndexFactory func(c *config.Config) (index.Indexer, error)
+
+// indexRegistry holds registered index factories.
+var indexRegistry = map[string]IndexFactory{}
+
+// RegisterIndex registers an index factory for a given type name.
+func RegisterIndex(name string, factory IndexFactory) {
+	indexRegistry[name] = factory
 }
 
 func getIndex(c *config.Config) (index.Indexer, error) {
@@ -223,10 +237,11 @@ func getIndex(c *config.Config) (index.Indexer, error) {
 		return nop.New(), nil
 	case "memory":
 		return mem.New(), nil
-	case "mysql":
-		return mysql.New(c.Index.MySQL)
-	case "postgres":
-		return postgres.New(c.Index.Postgres)
+	default:
+		// Check registry for build-tagged backends
+		if factory, ok := indexRegistry[c.IndexType]; ok {
+			return factory(c)
+		}
+		return nil, fmt.Errorf("index type %q is unknown (you may need to build with -tags %s)", c.IndexType, c.IndexType)
 	}
-	return nil, fmt.Errorf("unknown index type: %q", c.IndexType)
 }
