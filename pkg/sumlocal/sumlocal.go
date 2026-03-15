@@ -170,12 +170,26 @@ func (s *Server) currentTree() (tlog.Tree, error) {
 	if s.nrecords == 0 {
 		return tlog.Tree{N: 0}, nil
 	}
-	hr := tlog.TileHashReader(tlog.Tree{N: s.nrecords}, s)
-	th, err := tlog.TreeHash(s.nrecords, hr)
+	th, err := tlog.TreeHash(s.nrecords, s.hashReader())
 	if err != nil {
 		return tlog.Tree{}, err
 	}
 	return tlog.Tree{N: s.nrecords, Hash: th}, nil
+}
+
+// hashReader returns a HashReader that reads directly from the flat hash file.
+// This avoids TileHashReader's tree authentication which is unnecessary
+// since we are the server and trust our own data.
+func (s *Server) hashReader() tlog.HashReaderFunc {
+	return func(indexes []int64) ([]tlog.Hash, error) {
+		hashes := make([]tlog.Hash, len(indexes))
+		for i, idx := range indexes {
+			if _, err := s.hashes.ReadAt(hashes[i][:], idx*int64(tlog.HashSize)); err != nil {
+				return nil, fmt.Errorf("read hash at index %d: %w", idx, err)
+			}
+		}
+		return hashes, nil
+	}
 }
 
 // ReadRecords implements sumdb.ServerOps.
@@ -209,7 +223,7 @@ func (s *Server) Lookup(_ context.Context, m module.Version) (int64, error) {
 	// Compute hashes from storage
 	zipHash, modHash, err := s.computeHashes(m.Path, m.Version)
 	if err != nil {
-		return 0, err
+		return 0, &os.PathError{Op: "lookup", Path: key, Err: os.ErrNotExist}
 	}
 
 	id, err := s.addRecord(m.Path, m.Version, zipHash, modHash)
@@ -242,35 +256,6 @@ func (s *Server) readHashTile(tile tlog.Tile) ([]byte, error) {
 	return result, nil
 }
 
-// Height implements tlog.TileReader for TileHashReader.
-func (s *Server) Height() int {
-	return tileHeight
-}
-
-// ReadTiles implements tlog.TileReader for TileHashReader.
-func (s *Server) ReadTiles(tiles []tlog.Tile) ([][]byte, error) {
-	out := make([][]byte, len(tiles))
-	for i, tile := range tiles {
-		if tile.L == -1 {
-			d, err := s.readDataTile(tile)
-			if err != nil {
-				return nil, err
-			}
-			out[i] = d
-		} else {
-			d, err := s.readHashTile(tile)
-			if err != nil {
-				return nil, err
-			}
-			out[i] = d
-		}
-	}
-	return out, nil
-}
-
-// SaveTiles implements tlog.TileReader (no-op, we serve from flat hash file).
-func (s *Server) SaveTiles([]tlog.Tile, [][]byte) {}
-
 func (s *Server) readDataTile(tile tlog.Tile) ([]byte, error) {
 	var result []byte
 	start := tile.N * int64(1<<uint(tile.H))
@@ -297,11 +282,8 @@ func (s *Server) addRecord(mod, ver, zipHash, modHash string) (int64, error) {
 	// Compute record hash
 	recHash := tlog.RecordHash([]byte(text))
 
-	// Build hash reader from existing tiles
-	hr := tlog.TileHashReader(tlog.Tree{N: id}, s)
-
-	// Compute new stored hashes
-	newHashes, err := tlog.StoredHashesForRecordHash(id, recHash, hr)
+	// Compute new stored hashes using direct hash reader
+	newHashes, err := tlog.StoredHashesForRecordHash(id, recHash, s.hashReader())
 	if err != nil {
 		return 0, fmt.Errorf("compute stored hashes: %w", err)
 	}
