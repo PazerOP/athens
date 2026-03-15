@@ -3,6 +3,7 @@ package external
 import (
 	"bytes"
 	"context"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -118,4 +119,47 @@ func TestNewServer_WithData(t *testing.T) {
 	w = httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 	require.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestNewServer_Save(t *testing.T) {
+	s, err := mem.NewStorage()
+	require.NoError(t, err)
+
+	handler := NewServer(s)
+
+	// Create multipart form
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+
+	// Add info file
+	infoWriter, err := mw.CreateFormFile("mod.info", "mod.info")
+	require.NoError(t, err)
+	_, err = infoWriter.Write([]byte(`{"Version":"v2.0.0"}`))
+	require.NoError(t, err)
+
+	// Add mod file
+	modWriter, err := mw.CreateFormFile("mod.mod", "mod.mod")
+	require.NoError(t, err)
+	_, err = modWriter.Write([]byte("module github.com/test/savemod"))
+	require.NoError(t, err)
+
+	// Add zip file
+	zipWriter, err := mw.CreateFormFile("mod.zip", "mod.zip")
+	require.NoError(t, err)
+	_, err = zipWriter.Write([]byte("fake zip data"))
+	require.NoError(t, err)
+
+	mw.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/github.com/test/savemod/@v/v2.0.0.save", &buf)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	// Verify the module was saved by fetching its info
+	req = httptest.NewRequest(http.MethodGet, "/github.com/test/savemod/@v/v2.0.0.info", nil)
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
 }

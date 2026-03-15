@@ -58,3 +58,44 @@ func TestCatalogHandler_JSON(t *testing.T) {
 	// But still verify it returns JSON content type
 	_ = json.NewDecoder(w.Body)
 }
+
+func TestCatalogHandler_WithPageSize(t *testing.T) {
+	s, err := mem.NewStorage()
+	require.NoError(t, err)
+
+	handler := catalogHandler(s)
+	req := httptest.NewRequest(http.MethodGet, "/catalog?pagesize=10", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var res catalogRes
+	err = json.NewDecoder(w.Body).Decode(&res)
+	require.NoError(t, err)
+}
+
+func TestCatalogHandler_WithToken(t *testing.T) {
+	s, err := mem.NewStorage()
+	require.NoError(t, err)
+
+	handler := catalogHandler(s)
+	req := httptest.NewRequest(http.MethodGet, "/catalog?token=sometoken", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+	// token may or may not be valid, but handler should not panic
+	require.NotEqual(t, 0, w.Code)
+}
+
+func TestCatalogHandler_InvalidPageSize(t *testing.T) {
+	s, err := mem.NewStorage()
+	require.NoError(t, err)
+
+	handler := catalogHandler(s)
+	req := httptest.NewRequest(http.MethodGet, "/catalog?pagesize=invalid", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+	require.Equal(t, http.StatusInternalServerError, w.Code)
+}
