@@ -2,6 +2,8 @@ module github.com/gomods/athens
 
 go 1.23.12
 
+toolchain go1.25.1
+
 require (
 	cloud.google.com/go/storage v1.45.0
 	contrib.go.opencensus.io/exporter/jaeger v0.2.1
