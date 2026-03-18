@@ -12,15 +12,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        id: install-go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Download dependencies
-        run: go mod download
-        if: steps.install-go.outputs.cache-hit != 'true'
+      - name: Go Toolchain
+        uses: wow-look-at-my/go-toolchain@v1
 
       - name: Capture Current Date
         id: date

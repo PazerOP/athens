@@ -15,11 +15,8 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: 'go.mod'
-          cache: false
+      - name: Go Toolchain
+        uses: wow-look-at-my/go-toolchain@v1
 
       - name: Create directory for user-specific executable files
         run: |
