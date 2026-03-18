@@ -14,16 +14,7 @@ jobs:
 
       - name: Go Toolchain
         uses: wow-look-at-my/go-toolchain@v1
-
-      - name: Capture Current Date
-        id: date
-        run: echo "::set-output name=date::$(date -u '+%Y-%m-%d-%H:%M:%S-%Z')"
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
         with:
-          version: latest
-          args: release --clean
+          autorelease: true
         env:
-          DATE: ${{ steps.date.outputs.date }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

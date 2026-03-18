@@ -4,23 +4,6 @@ on:
   push:
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    env:
-      GOLANGCI_LINT_VERSION: v2.1.6
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Go Toolchain
-        uses: wow-look-at-my/go-toolchain@v1
-
-      - name: Lint code
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: ${{ env.GOLANGCI_LINT_VERSION }}
-
   test:
     runs-on: ubuntu-latest
     env:
@@ -111,15 +94,3 @@ jobs:
 
       - name: Go Toolchain
         uses: wow-look-at-my/go-toolchain@v1
-
-      - name: Capture Current Date
-        id: date
-        run: echo "::set-output name=date::$(date -u '+%Y-%m-%d-%H:%M:%S-%Z')"
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: latest
-          args: release --clean --snapshot
-        env:
-          DATE: ${{ steps.date.outputs.date }}
