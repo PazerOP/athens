@@ -2,6 +2,8 @@ module github.com/gomods/athens
 
 go 1.23.12
 
+toolchain go1.25.1
+
 require (
 	cloud.google.com/go/storage v1.45.0
 	contrib.go.opencensus.io/exporter/jaeger v0.2.1
@@ -189,3 +191,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
+
+// mitchellh/osext repo was deleted; redirect to the original kardianos fork
+replace github.com/mitchellh/osext => github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
