@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/wow-look-at-my/testify/require"
 	"github.com/gomods/athens/pkg/config"
 	"github.com/gomods/athens/pkg/storage/compliance"
 	"github.com/technosophos/moniker"
@@ -57,13 +58,10 @@ func getStorage(t testing.TB) *Storage {
 	}
 
 	s, err := New(cfg, config.GetTimeoutDuration(30))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	_, err = s.client.containerURL.Create(context.Background(), azblob.Metadata{}, azblob.PublicAccessNone)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	return s
 }
@@ -80,11 +78,11 @@ func getTestConfig(containerName string) *config.AzureBlobConfig {
 		return nil
 	}
 	return &config.AzureBlobConfig{
-		AccountName:               name,
-		AccountKey:                key,
-		ManagedIdentityResourceID: resourceId,
-		CredentialScope:           credentialScope,
-		ContainerName:             containerName,
+		AccountName:			name,
+		AccountKey:			key,
+		ManagedIdentityResourceID:	resourceId,
+		CredentialScope:		credentialScope,
+		ContainerName:			containerName,
 	}
 }
 

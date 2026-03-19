@@ -1,3 +1,5 @@
+//go:build azureblob
+
 package stash
 
 import (
@@ -10,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gomods/athens/pkg/config"
+	"github.com/wow-look-at-my/testify/require"
 	"github.com/gomods/athens/pkg/storage"
 	"github.com/gomods/athens/pkg/storage/mem"
 	"github.com/technosophos/moniker"
@@ -26,14 +29,12 @@ func TestWithAzureBlob(t *testing.T) {
 		t.SkipNow()
 	}
 	strg, err := mem.NewStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	ms := &mockAzureBlobStasher{strg: strg}
 	wpr, err := WithAzureBlobLock(cfg, time.Second*10, storage.WithChecker(strg))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	s := wpr(ms)
 
 	var eg errgroup.Group
@@ -47,9 +48,8 @@ func TestWithAzureBlob(t *testing.T) {
 	}
 
 	err = eg.Wait()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 }
 
 // mockAzureBlobStasher is like mockStasher
@@ -57,13 +57,13 @@ func TestWithAzureBlob(t *testing.T) {
 // so that azure blob can determine
 // whether to call the underlying stasher or not.
 type mockAzureBlobStasher struct {
-	strg storage.Backend
-	mu   sync.Mutex
-	num  int
+	strg	storage.Backend
+	mu	sync.Mutex
+	num	int
 }
 
 func (ms *mockAzureBlobStasher) Stash(ctx context.Context, mod, ver string) (string, error) {
-	time.Sleep(time.Millisecond * 100) // allow for second requests to come in.
+	time.Sleep(time.Millisecond * 100)	// allow for second requests to come in.
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 	if ms.num == 0 {
@@ -97,11 +97,11 @@ func getAzureTestConfig(containerName string) *config.AzureBlobConfig {
 		return nil
 	}
 	return &config.AzureBlobConfig{
-		AccountName:               name,
-		AccountKey:                key,
-		ManagedIdentityResourceID: resourceId,
-		CredentialScope:           credentialScope,
-		ContainerName:             containerName,
+		AccountName:			name,
+		AccountKey:			key,
+		ManagedIdentityResourceID:	resourceId,
+		CredentialScope:		credentialScope,
+		ContainerName:			containerName,
 	}
 }
 

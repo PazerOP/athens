@@ -11,21 +11,20 @@ import (
 	"github.com/gomods/athens/pkg/config"
 	"github.com/gomods/athens/pkg/module"
 	"github.com/gorilla/mux"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
+	"github.com/wow-look-at-my/testify/require"
+	"github.com/wow-look-at-my/testify/suite"
 )
 
 // Avoid import cycle.
 const (
-	pathList        = "/{module:.+}/@v/list"
-	pathVersionInfo = "/{module:.+}/@v/{version}.info"
+	pathList	= "/{module:.+}/@v/list"
+	pathVersionInfo	= "/{module:.+}/@v/{version}.info"
 )
 
 func testConfigFile(t *testing.T) (testConfigFile string) {
 	testConfigFile = filepath.Join("..", "..", "config.dev.toml")
-	if err := os.Chmod(testConfigFile, 0o700); err != nil {
-		t.Fatalf("%s\n", err)
-	}
+	require.NoError(t, os.Chmod(testConfigFile, 0o700))
+
 	return testConfigFile
 }
 
@@ -64,9 +63,7 @@ func Test_FilterMiddleware(t *testing.T) {
 	defer os.Remove(filter.Name())
 
 	conf, err := config.GetConf(testConfigFile(t))
-	if err != nil {
-		t.Fatalf("Unable to parse config file: %s", err.Error())
-	}
+	require.Nil(t, err)
 
 	// Test with a filter file not existing
 	app, err := middlewareFilterApp("nofsfile", conf.GlobalEndpoint)
@@ -102,9 +99,9 @@ func hookFilterApp(hook string) *mux.Router {
 }
 
 type hookMock struct {
-	invoked bool
-	params  validationParams
-	resCode int
+	invoked	bool
+	params	validationParams
+	resCode	int
 }
 
 func (m *hookMock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -116,9 +113,9 @@ func (m *hookMock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type HookTestsSuite struct {
 	suite.Suite
-	mock   hookMock
-	server *ht.Server
-	w      *ht.Handler
+	mock	hookMock
+	server	*ht.Server
+	w	*ht.Handler
 }
 
 func (suite *HookTestsSuite) SetupSuite() {

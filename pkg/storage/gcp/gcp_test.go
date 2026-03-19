@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gomods/athens/pkg/config"
+	"github.com/wow-look-at-my/testify/require"
 	"github.com/gomods/athens/pkg/storage/compliance"
 	"github.com/technosophos/moniker"
 	"google.golang.org/api/iterator"
@@ -58,13 +59,10 @@ func getStorage(t testing.TB) *Storage {
 	}
 
 	s, err := newClient(context.Background(), cfg, config.GetTimeoutDuration(30))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	err = s.bucket.Create(context.Background(), cfg.ProjectID, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	return s
 }
@@ -75,9 +73,9 @@ func getTestConfig(bucket string) *config.GCPConfig {
 		return nil
 	}
 	return &config.GCPConfig{
-		Bucket:    bucket,
-		JSONKey:   creds,
-		ProjectID: os.Getenv("GCS_PROJECT_ID"),
+		Bucket:		bucket,
+		JSONKey:	creds,
+		ProjectID:	os.Getenv("GCS_PROJECT_ID"),
 	}
 }
 

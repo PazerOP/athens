@@ -5,14 +5,14 @@ import (
 	"testing"
 
 	"github.com/gomods/athens/pkg/storage/compliance"
+	"github.com/wow-look-at-my/testify/require"
 	"github.com/gomods/athens/pkg/storage/mem"
 )
 
 func TestExternal(t *testing.T) {
 	strg, err := mem.NewStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	handler := NewServer(strg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()

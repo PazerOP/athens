@@ -1,3 +1,5 @@
+//go:build azureblob
+
 package stash
 
 import (

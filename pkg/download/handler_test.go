@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gomods/athens/pkg/download/mode"
+	"github.com/wow-look-at-my/testify/require"
 	"github.com/gomods/athens/pkg/errors"
 	"github.com/gomods/athens/pkg/log"
 	"github.com/gomods/athens/pkg/storage"
@@ -17,11 +18,11 @@ func TestRedirect(t *testing.T) {
 	for _, url := range []string{"https://gomods.io", "https://internal.domain/repository/gonexus"} {
 		r := mux.NewRouter()
 		RegisterHandlers(r, &HandlerOpts{
-			Protocol: &mockProtocol{},
-			Logger:   log.NoOpLogger(),
+			Protocol:	&mockProtocol{},
+			Logger:		log.NoOpLogger(),
 			DownloadFile: &mode.DownloadFile{
-				Mode:        mode.Redirect,
-				DownloadURL: url,
+				Mode:		mode.Redirect,
+				DownloadURL:	url,
 			},
 		})
 		for _, path := range [...]string{
@@ -32,14 +33,12 @@ func TestRedirect(t *testing.T) {
 			req := httptest.NewRequest("GET", path, nil)
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, req)
-			if w.Code != http.StatusMovedPermanently {
-				t.Fatalf("expected a redirect status (301) but got %v", w.Code)
-			}
+			require.Equal(t, http.StatusMovedPermanently, w.Code)
+
 			expectedRedirect := url + path
 			givenRedirect := w.HeaderMap.Get("location")
-			if expectedRedirect != givenRedirect {
-				t.Fatalf("expected the handler to redirect to %q but got %q", expectedRedirect, givenRedirect)
-			}
+			require.Equal(t, givenRedirect, expectedRedirect)
+
 		}
 	}
 }

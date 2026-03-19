@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"github.com/wow-look-at-my/testify/require"
 )
 
 func TestSumdbProxy(t *testing.T) {
@@ -28,20 +29,17 @@ func TestSumdbProxy(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 
-	if w.Code != 200 {
-		t.Fatalf("expected to return 200 but got %v", w.Code)
-	}
+	require.Equal(t, 200, w.Code)
 
-	if givenURL != expectedURL {
-		t.Fatalf("expected the URL to be %v but got %v", expectedURL, givenURL)
-	}
+	require.Equal(t, expectedURL, givenURL)
+
 }
 
 var noSumTestCases = []struct {
-	name     string
-	patterns []string
-	given    string
-	status   int
+	name		string
+	patterns	[]string
+	given		string
+	status		int
 }{
 	{
 		"no match",
@@ -100,11 +98,10 @@ func TestNoSumPatterns(t *testing.T) {
 			skipHandler := noSumWrapper(http.HandlerFunc(emptyHandler), tc.patterns)
 			req := httptest.NewRequest("GET", "/lookup/"+tc.given, nil)
 			skipHandler.ServeHTTP(w, req)
-			if tc.status != w.Code {
-				t.Fatalf("expected NoSum wrapper to return %v but got %v", tc.status, w.Code)
-			}
+			require.Equal(t, w.Code, tc.status)
+
 		})
 	}
 }
 
-func emptyHandler(w http.ResponseWriter, r *http.Request) {}
+func emptyHandler(w http.ResponseWriter, r *http.Request)	{}

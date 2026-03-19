@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gobuffalo/envy"
-	"github.com/stretchr/testify/suite"
+	"github.com/wow-look-at-my/testify/suite"
 )
 
 type DeleteTests struct {
