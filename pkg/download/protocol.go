@@ -203,12 +203,19 @@ func (p *protocol) Info(ctx context.Context, mod, ver string) ([]byte, error) {
 	info, err := p.storage.Info(ctx, mod, ver)
 	if err == nil {
 		observ.RecordCacheLookup(ctx, "hit", "info")
+		observ.RecordCacheHit(ctx, "info")
+		observ.RecordBytesServed(ctx, "info", int64(len(info)))
 	} else if errors.IsNotFoundErr(err) {
 		observ.RecordCacheLookup(ctx, "miss", "info")
+		observ.RecordCacheMiss(ctx, "info")
 		err = p.processDownload(ctx, mod, ver, func(newVer string) error {
 			info, err = p.storage.Info(ctx, mod, newVer)
 			return err
 		})
+		if err == nil {
+			observ.RecordBytesFetched(ctx, "info", int64(len(info)))
+			observ.RecordBytesServed(ctx, "info", int64(len(info)))
+		}
 	}
 	if err != nil {
 		return nil, errors.E(op, err)
@@ -224,12 +231,19 @@ func (p *protocol) GoMod(ctx context.Context, mod, ver string) ([]byte, error) {
 	goMod, err := p.storage.GoMod(ctx, mod, ver)
 	if err == nil {
 		observ.RecordCacheLookup(ctx, "hit", "gomod")
+		observ.RecordCacheHit(ctx, "mod")
+		observ.RecordBytesServed(ctx, "mod", int64(len(goMod)))
 	} else if errors.IsNotFoundErr(err) {
 		observ.RecordCacheLookup(ctx, "miss", "gomod")
+		observ.RecordCacheMiss(ctx, "mod")
 		err = p.processDownload(ctx, mod, ver, func(newVer string) error {
 			goMod, err = p.storage.GoMod(ctx, mod, newVer)
 			return err
 		})
+		if err == nil {
+			observ.RecordBytesFetched(ctx, "mod", int64(len(goMod)))
+			observ.RecordBytesServed(ctx, "mod", int64(len(goMod)))
+		}
 	}
 	if err != nil {
 		return nil, errors.E(op, err)
@@ -244,12 +258,19 @@ func (p *protocol) Zip(ctx context.Context, mod, ver string) (storage.SizeReadCl
 	zip, err := p.storage.Zip(ctx, mod, ver)
 	if err == nil {
 		observ.RecordCacheLookup(ctx, "hit", "zip")
+		observ.RecordCacheHit(ctx, "zip")
+		observ.RecordBytesServed(ctx, "zip", zip.Size())
 	} else if errors.IsNotFoundErr(err) {
 		observ.RecordCacheLookup(ctx, "miss", "zip")
+		observ.RecordCacheMiss(ctx, "zip")
 		err = p.processDownload(ctx, mod, ver, func(newVer string) error {
 			zip, err = p.storage.Zip(ctx, mod, newVer)
 			return err
 		})
+		if err == nil {
+			observ.RecordBytesFetched(ctx, "zip", zip.Size())
+			observ.RecordBytesServed(ctx, "zip", zip.Size())
+		}
 	}
 	if err != nil {
 		return nil, errors.E(op, err)
