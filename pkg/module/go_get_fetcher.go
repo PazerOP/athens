@@ -16,6 +16,7 @@ import (
 	"github.com/gomods/athens/pkg/observ"
 	"github.com/gomods/athens/pkg/storage"
 	"github.com/spf13/afero"
+	gomodule "golang.org/x/mod/module"
 )
 
 type goGetFetcher struct {
@@ -57,6 +58,10 @@ func (g *goGetFetcher) Fetch(ctx context.Context, mod, ver string) (*storage.Ver
 	const op errors.Op = "goGetFetcher.Fetch"
 	ctx, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
+
+	if err := gomodule.CheckPath(mod); err != nil {
+		return nil, errors.E(op, err, errors.KindNotFound)
+	}
 
 	// setup the GOPATH
 	goPathRoot, err := afero.TempDir(g.fs, g.gogetDir, "athens")

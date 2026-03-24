@@ -13,6 +13,7 @@ import (
 	"github.com/gomods/athens/pkg/observ"
 	"github.com/gomods/athens/pkg/storage"
 	"github.com/spf13/afero"
+	gomodule "golang.org/x/mod/module"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -51,6 +52,11 @@ func (l *vcsLister) List(ctx context.Context, module string) (*storage.RevInfo, 
 	const op errors.Op = "vcsLister.List"
 	_, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
+
+	if err := gomodule.CheckPath(module); err != nil {
+		return nil, nil, errors.E(op, err, errors.KindNotFound)
+	}
+
 	sfResp, err, _ := l.sfg.Do(module, func() (any, error) {
 		tmpDir, err := afero.TempDir(l.fs, "", "go-list")
 		if err != nil {
@@ -100,7 +106,7 @@ func (l *vcsLister) List(ctx context.Context, module string) (*storage.RevInfo, 
 		var lr listResp
 		err = json.NewDecoder(stdout).Decode(&lr)
 		if err != nil {
-			return nil, errors.E(op, err)
+			return nil, errors.E(op, err, errors.KindNotFound)
 		}
 		rev := storage.RevInfo{
 			Time:    lr.Time,
