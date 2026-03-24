@@ -166,7 +166,7 @@ func downloadModule(
 		err = fmt.Errorf("%w: %s", err, stderr)
 		var m goModule
 		if jsonErr := json.NewDecoder(stdout).Decode(&m); jsonErr != nil {
-			return goModule{}, errors.E(op, err)
+			return goModule{}, errors.E(op, err, errors.KindNotFound)
 		}
 		// github quota exceeded
 		if isLimitHit(m.Error) {
@@ -177,10 +177,10 @@ func downloadModule(
 
 	var m goModule
 	if err = json.NewDecoder(stdout).Decode(&m); err != nil {
-		return goModule{}, errors.E(op, err)
+		return goModule{}, errors.E(op, err, errors.KindNotFound)
 	}
 	if m.Error != "" {
-		return goModule{}, errors.E(op, m.Error)
+		return goModule{}, errors.E(op, m.Error, errors.KindNotFound)
 	}
 
 	return m, nil

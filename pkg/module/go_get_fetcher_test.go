@@ -20,13 +20,11 @@ var ctx = context.Background()
 func TestGoGetFetcherInvalidModulePaths(t *testing.T) {
 	t.Parallel()
 	fetcher, err := NewGoGetFetcher("go", "", nil, afero.NewMemMapFs())
-	if err != nil {
-		t.Fatalf("NewGoGetFetcher: %v", err)
-	}
+	require.Nil(t, err)
 
 	tests := []struct {
-		name string
-		mod  string
+		name	string
+		mod	string
 	}{
 		{"bare host", "github.com"},
 		{"host with owner only", "github.com/owner"},
@@ -38,12 +36,11 @@ func TestGoGetFetcherInvalidModulePaths(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			_, fetchErr := fetcher.Fetch(context.Background(), tt.mod, "v1.0.0")
-			if fetchErr == nil {
-				t.Fatalf("expected error for module path %q, got nil", tt.mod)
-			}
-			if kind := errors.Kind(fetchErr); kind != errors.KindNotFound {
-				t.Errorf("expected KindNotFound (%d) for module path %q, got %d", errors.KindNotFound, tt.mod, kind)
-			}
+			require.NotNil(t, fetchErr)
+
+			kind := errors.Kind(fetchErr)
+			assert.Equal(t, errors.KindNotFound, kind)
+
 		})
 	}
 }
