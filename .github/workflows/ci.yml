@@ -3,12 +3,10 @@ name: CI
 on:
   push:
 
+permissions:
+  contents: write
+
 jobs:
   build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Go Toolchain
-        uses: wow-look-at-my/go-toolchain@v1
+    uses: wow-look-at-my/go-toolchain/.github/workflows/build.yml@v1
+    secrets: inherit
