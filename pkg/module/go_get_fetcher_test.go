@@ -45,6 +45,43 @@ func TestGoGetFetcherInvalidModulePaths(t *testing.T) {
 	}
 }
 
+func TestWithToolchainSumDB(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		in   []string
+		want []string
+	}{
+		{
+			name: "replaces GOSUMDB=off",
+			in:   []string{"GOPATH=/x", "GOSUMDB=off", "GOPROXY=direct"},
+			want: []string{"GOPATH=/x", "GOSUMDB=sum.golang.org", "GOPROXY=direct"},
+		},
+		{
+			name: "leaves a custom GOSUMDB untouched",
+			in:   []string{"GOSUMDB=corp.example.com+abc123 https://corp.example.com/sumdb"},
+			want: []string{"GOSUMDB=corp.example.com+abc123 https://corp.example.com/sumdb"},
+		},
+		{
+			name: "absent GOSUMDB is left as-is (Go defaults to sum.golang.org)",
+			in:   []string{"GOPATH=/x", "GOPROXY=direct"},
+			want: []string{"GOPATH=/x", "GOPROXY=direct"},
+		},
+		{
+			name: "does not touch unrelated GONOSUMDB/GOFLAGS",
+			in:   []string{"GONOSUMDB=*", "GOFLAGS=-mod=mod", "GOSUMDB=off"},
+			want: []string{"GONOSUMDB=*", "GOFLAGS=-mod=mod", "GOSUMDB=sum.golang.org"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, withToolchainSumDB(tt.in))
+		})
+	}
+}
+
 func (s *ModuleSuite) TestNewGoGetFetcher() {
 	r := s.Require()
 	fetcher, err := NewGoGetFetcher(s.goBinaryName, "", s.env, s.fs)
