@@ -154,7 +154,11 @@ func downloadModule(
 	fullURI := fmt.Sprintf("%s@%s", uri, version)
 
 	cmd := exec.CommandContext(ctx, goBinaryName, "mod", "download", "-json", fullURI)
-	cmd.Env = prepareEnv(gopath, envVars)
+	env := prepareEnv(gopath, envVars)
+	if uri == toolchainModulePath {
+		env = withToolchainSumDB(env)
+	}
+	cmd.Env = env
 	cmd.Dir = repoRoot
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -184,6 +188,37 @@ func downloadModule(
 	}
 
 	return m, nil
+}
+
+// toolchainModulePath is the synthetic module Go uses to distribute toolchains
+// for its automatic toolchain switching (since Go 1.21). Go treats this module
+// specially: it always verifies it against a checksum database and ignores the
+// usual opt-outs (GONOSUMCHECK, GONOSUMDB, GOPRIVATE, GOFLAGS=-mod=mod). A
+// fetcher configured with GOSUMDB=off therefore cannot download it at all,
+// failing with "verifying go.mod: checksum database disabled by GOSUMDB=off".
+const toolchainModulePath = "golang.org/toolchain"
+
+// publicSumDB is the public Go checksum database, which is authoritative for
+// the golang.org/toolchain module.
+const publicSumDB = "GOSUMDB=sum.golang.org"
+
+// withToolchainSumDB returns env with a disabled checksum database (GOSUMDB=off)
+// replaced by the public sum.golang.org, so that golang.org/toolchain downloads
+// can be verified and thus succeed. Any other GOSUMDB value (a custom or
+// mirrored sumdb) is left untouched, as is an absent GOSUMDB (Go then defaults
+// to sum.golang.org, which already works). This lets Athens mirror the
+// toolchain module like any other even when operators run the fetcher with
+// GOSUMDB=off for privacy on regular modules.
+func withToolchainSumDB(env []string) []string {
+	out := make([]string, len(env))
+	for i, kv := range env {
+		if kv == "GOSUMDB=off" {
+			out[i] = publicSumDB
+			continue
+		}
+		out[i] = kv
+	}
+	return out
 }
 
 func isLimitHit(o string) bool {
